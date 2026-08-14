@@ -21,7 +21,7 @@ through `npx --yes pnpm@10`. Install it properly if you get tired of the prefix.
 
 - **Install:** `npx --yes pnpm@10 install`
 - **Everything green (what CI runs):** `npx --yes pnpm@10 verify`
-  Baseline: **5 guards, 0 lint errors, 6 packages typechecking, 95 tests.** Report
+  Baseline: **5 guards, 0 lint errors, 6 packages typechecking, 190 tests.** Report
   the counts after your change.
 - **Guards only** (fast, run before pushing): `npx --yes pnpm@10 guards`
 - **Extension:** `cd apps/extension && npx --yes pnpm@10 build` → loads from
@@ -43,6 +43,15 @@ through `npx --yes pnpm@10`. Install it properly if you get tired of the prefix.
   plugin chain under pnpm's default symlinked layout.
 - **`@types/node` needs an explicit `"types": ["node"]`** in `packages/db` and
   `packages/agents` — TS 6 doesn't pick it up by typeRoots walk-up here.
+
+### Testing the database
+
+`packages/db` tests run **real Postgres in-process** via PGlite — no Docker, no
+`DATABASE_URL`, no service. `createTestDatabase()` applies the same
+`migrations/` directory that ships to production, so a migration that won't
+apply fails in CI before it reaches a real database. Write persistence tests
+there rather than mocking Drizzle; a mock's idea of `ON CONFLICT` is not
+evidence. They run ~6s, which is why the suite is slower than it was.
 
 ## Architecture
 

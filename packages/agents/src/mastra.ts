@@ -20,7 +20,9 @@ export function createMastra(connectionString: string) {
   return new Mastra({
     agents,
     workflows,
-    storage: new PostgresStore({ connectionString }),
+    // `id` is required by @mastra/pg and names this store instance in Mastra's
+    // own bookkeeping — omitting it fails at first use, not at construction.
+    storage: new PostgresStore({ id: "junkclaw", connectionString }),
     logger: new PinoLogger({ name: "junkclaw", level: "info" }),
   });
 }

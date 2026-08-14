@@ -59,6 +59,10 @@ CI runs the same gate on every push and PR, plus both builds — see
 [`docs/ci-cd.md`](docs/ci-cd.md) for the pipeline, the guards, and what is
 deliberately not automated.
 
+**Sequencing lives in [`docs/roadmap.md`](docs/roadmap.md)** — ordered goals for
+M0/M1/M2 with a "done when" for each. Check there before picking up work; the
+order encodes dependencies that aren't obvious from the code.
+
 ## Hard rules
 
 - **Dependency direction is `agents → core → schema`. Never backwards.**

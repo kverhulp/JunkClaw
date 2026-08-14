@@ -21,7 +21,13 @@ describe("classifyVehicle", () => {
 
   it("catches powersports with no recognised make", () => {
     expect(classifyVehicle("Tao Motor Gas-Powered ATV", null)).toBe("powersports");
+  });
+
+  it("catches the spellings sellers actually use", () => {
+    // Both observed. "Escooter" is one word, so \bscooter\b does not reach it.
     expect(classifyVehicle("Escooter barely used", null)).toBe("powersports");
+    expect(classifyVehicle("E-scooter, 2 batteries", null)).toBe("powersports");
+    expect(classifyVehicle("e bike 750w", null)).toBe("powersports");
   });
 
   it("does not mistake a car model for a powersports keyword", () => {

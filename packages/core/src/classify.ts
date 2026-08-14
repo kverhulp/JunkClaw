@@ -46,8 +46,12 @@ const POWERSPORTS_ONLY_MAKES = new Set(
   ].map(normalizeMake),
 );
 
+/**
+ * `e[\s-]?scooter` before the bare `scooter` on purpose: sellers write
+ * "Escooter" as one word, and `\bscooter\b` does not match inside it.
+ */
 const POWERSPORTS_KEYWORDS =
-  /\b(atv|quad|four[\s-]?wheeler|4[\s-]?wheeler|dirt\s?bike|pit\s?bike|motorcycle|motorbike|scooter|moped|snowmobile|sled|side[\s-]?by[\s-]?side|sxs|utv|jet\s?ski|waverunner|dual\s?sport|sport\s?bike)\b/i;
+  /\b(atv|quad|four[\s-]?wheeler|4[\s-]?wheeler|dirt\s?bike|pit\s?bike|motorcycle|motorbike|e[\s-]?scooter|scooter|e[\s-]?bike|moped|snowmobile|sled|side[\s-]?by[\s-]?side|sxs|utv|jet\s?ski|waverunner|dual\s?sport|sport\s?bike)\b/i;
 
 const PARTS_KEYWORDS =
   /\b(parting\s?out|part(s)?\s?(only|out)|for\s?parts|no\s?motor|no\s?engine|engine\s?only|shell\s?only|scrap|as[\s-]is\s?for\s?parts)\b/i;

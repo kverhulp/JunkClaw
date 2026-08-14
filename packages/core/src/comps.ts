@@ -14,9 +14,42 @@ import { median, percentile } from "./valuation";
 export const MIN_COMPS = 3;
 export const CONFIDENT_COMPS = 8;
 
+/**
+ * Prices outside this band are not offers.
+ *
+ * Sellers game search ranking with placeholder prices: the first live run turned
+ * up a 2015 Challenger at $1,234,567 and a 2017 Charger at $1.00 sitting in
+ * otherwise ordinary buckets. Ten of 106 listings were outside these bounds.
+ * A median survives a couple of them; a mean does not, and neither survives a
+ * thin bucket where they are a third of the sample.
+ *
+ * Excluded here at comp time rather than flagged at ingest on purpose: "what did
+ * sellers actually ask" is the historical record we want kept intact, and these
+ * thresholds will move as the corpus teaches us the real floor and ceiling.
+ * Filtering at query time keeps that revisable; a flag written at ingest freezes
+ * today's guess into the data.
+ */
+export const MIN_PLAUSIBLE_PRICE_CENTS = 30_000; // $300
+export const MAX_PLAUSIBLE_PRICE_CENTS = 15_000_000; // $150,000
+
 export interface CompCandidate {
   listingId: string;
   priceCents: number;
+}
+
+export function isPlausiblePrice(priceCents: number): boolean {
+  return priceCents >= MIN_PLAUSIBLE_PRICE_CENTS && priceCents <= MAX_PLAUSIBLE_PRICE_CENTS;
+}
+
+/**
+ * Drop bait and placeholder prices before the statistics see them.
+ *
+ * Call this on the candidate list, not on the subject listing: a real car
+ * genuinely priced at $200 should still be *scored*, it just should not set the
+ * benchmark other cars are measured against.
+ */
+export function excludeImplausiblePrices(candidates: CompCandidate[]): CompCandidate[] {
+  return candidates.filter((candidate) => isPlausiblePrice(candidate.priceCents));
 }
 
 export function confidenceFor(sampleSize: number): CompConfidence {

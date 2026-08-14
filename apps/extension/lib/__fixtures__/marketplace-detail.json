@@ -1,0 +1,93 @@
+{
+  "__typename": "GroupCommerceProductItem",
+  "__isMarketplaceVehicleListing": "GroupCommerceProductItem",
+  "id": "ID_1",
+  "marketplace_listing_title": "2013 Honda Civic EX",
+  "custom_title": "2013 Honda Civic EX",
+  "condition": "USED",
+  "creation_time": 1784197942,
+  "is_live": true,
+  "is_sold": false,
+  "is_pending": false,
+  "is_hidden": false,
+  "is_draft": false,
+  "is_viewer_seller": false,
+  "is_seller_business_onboarded": false,
+  "should_show_business_seller_label": false,
+  "hidden_from_friends": "VISIBLE_TO_EVERYONE",
+  "listing_inventory_type": "SINGLE_QUANTITY",
+  "delivery_types": ["IN_PERSON"],
+  "listing_price": {
+    "amount": "4200.00",
+    "amount_with_offset": "420000",
+    "currency": "CAD"
+  },
+  "formatted_price": { "text": "CA$4,200" },
+  "fair_market_value_data": null,
+  "location": {
+    "latitude": 46.238708496094,
+    "longitude": -63.143920898438,
+    "reverse_geocode_detailed": {
+      "country_alpha_two": "CA",
+      "postal_code_trimmed": "C1A 1A1"
+    }
+  },
+  "location_text": { "text": "Charlottetown, PE" },
+  "redacted_description": { "text": "REAL_DESCRIPTION_TEXT_258_CHARS" },
+  "cross_post_info": {
+    "all_listings": [{ "__typename": "GroupCommerceProductItem", "id": "ID_1", "is_on_marketplace": true }]
+  },
+  "marketplace_listing_seller": {
+    "__typename": "User",
+    "id": "ID_10",
+    "user_id": "ID_11",
+    "name": "SELLER_NAME",
+    "join_time": 1295692225,
+    "marketplace_should_display_verified_badge": false,
+    "marketplace_ratings_stats_by_role_v2": {
+      "seller_buyer_combined": {
+        "five_star_ratings_average": 4.5,
+        "five_star_total_rating_count_by_role": 4,
+        "ratings_are_private": true
+      },
+      "seller_ratings_are_private": true,
+      "seller_stats": {
+        "five_star_ratings_average": 5,
+        "five_star_total_rating_count_by_role": 1
+      }
+    },
+    "marketplace_user_profile": { "id": "ID_12", "c2c_orders_shipped": null }
+  },
+  "seller": { "__typename": "User", "id": "ID_18" },
+  "seller_phone_number": null,
+  "dealership_name": null,
+  "vehicle_make_display_name": "Mazda",
+  "vehicle_model_display_name": "MAZDA MAZDA3",
+  "vehicle_trim_display_name": null,
+  "vehicle_odometer_data": { "unit": "KILOMETERS", "value": 241393 },
+  "vehicle_condition": null,
+  "vehicle_transmission_type": "AUTOMATIC",
+  "vehicle_fuel_type": "GASOLINE",
+  "vehicle_exterior_color": "Red",
+  "vehicle_interior_color": "",
+  "vehicle_seller_type": "PRIVATE_SELLER",
+  "vehicle_identification_number": null,
+  "vehicle_title_status": null,
+  "vehicle_number_of_owners": null,
+  "vehicle_carfax_report": null,
+  "vehicle_features": [],
+  "vehicle_specifications": {
+    "co2_emissions": null,
+    "engine_size": null,
+    "gas_mileage_city": null,
+    "gas_mileage_combined": null,
+    "gas_mileage_highway": null,
+    "horse_power": null,
+    "safety_rating_front": null,
+    "safety_rating_overall": null,
+    "safety_rating_rollover": null,
+    "safety_rating_side": null
+  },
+  "vehicle_website_link": null,
+  "primary_listing_photo": { "image": { "uri": "https://example.test/photo.jpg" } }
+}

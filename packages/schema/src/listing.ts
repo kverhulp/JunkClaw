@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { VehicleSchema } from "./vehicle";
+import { countryCodeAlpha2Schema } from "./country";
+import { currencyCodeSchema } from "./currency";
 
 export const SourceSchema = z.enum(["marketplace", "kijiji", "autotrader"]);
 export type Source = z.infer<typeof SourceSchema>;
@@ -8,10 +10,23 @@ export type Source = z.infer<typeof SourceSchema>;
  * Coarse location only. Never a street address, never a map pin — "Charlottetown,
  * PE" is enough to compute a radius and is not personal information.
  */
+/**
+ * Currencies we can actually price against.
+ *
+ * Narrowed from the canonical ISO 4217 set rather than declared independently:
+ * comps, deltas, and the stored corpus are all single-currency today, so
+ * accepting EUR would produce a number that looks right and means nothing.
+ * Widening this is a real piece of work, not a schema edit.
+ */
+export const SupportedCurrencySchema = currencyCodeSchema.extract(["CAD"]);
+export type SupportedCurrency = z.infer<typeof SupportedCurrencySchema>;
+
 export const CoarseLocationSchema = z.strictObject({
   city: z.string().min(1),
   region: z.string().min(1),
-  country: z.string().length(2),
+  // Canonical schema, not a length check — docs/schemas.md forbids ad-hoc
+  // country validation, and "XX" passing a length check is exactly why.
+  country: countryCodeAlpha2Schema,
 });
 export type CoarseLocation = z.infer<typeof CoarseLocationSchema>;
 
@@ -67,7 +82,9 @@ export const ListingFactsSchema = z.strictObject({
    * @junkclaw/core) so it can be corrected without shipping a new extension.
    */
   previousPriceCents: z.number().int().nonnegative().nullable(),
-  currency: z.literal("CAD"),
+  // Drawn from the canonical ISO 4217 list rather than a bare literal, then
+  // narrowed to what the comp math and the corpus actually support today.
+  currency: SupportedCurrencySchema,
   location: CoarseLocationSchema,
 
   /** Dealer listings change both the comp math and the negotiation script. */

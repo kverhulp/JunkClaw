@@ -119,7 +119,12 @@ export async function getEnrichedListing(
     priceCents: row.priceCents,
     previousPriceCents: null,
     currency: "CAD",
-    location: { city: row.city, region: row.region, country: row.country },
+    location: {
+      city: row.city,
+      region: row.region,
+      // Stored as text; the canonical enum is enforced at the ingest boundary.
+      country: row.country as EnrichedListing["location"]["country"],
+    },
     isDealer: row.isDealer,
     description: row.description,
     photoUrls: (row.photoUrls as string[]) ?? [],

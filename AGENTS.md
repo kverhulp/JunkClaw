@@ -14,6 +14,35 @@ decisions and
 [`docs/superpowers/specs/2026-08-14-junkclaw-architecture-design.md`](docs/superpowers/specs/2026-08-14-junkclaw-architecture-design.md)
 for technical ones. Both are authoritative; this file is the short version.
 
+## Build, run, test
+
+`pnpm` is **not installed globally** on this machine — every command below runs it
+through `npx --yes pnpm@10`. Install it properly if you get tired of the prefix.
+
+- **Install:** `npx --yes pnpm@10 install`
+- **Everything green:** `npx --yes pnpm@10 -r typecheck && npx --yes pnpm@10 test && npx --yes pnpm@10 lint`
+  Baseline: **6 packages typecheck clean, 34 tests passing, 0 lint errors.** Report
+  the counts after your change.
+- **Extension:** `cd apps/extension && npx --yes pnpm@10 build` → loads from
+  `.output/chrome-mv3` via `chrome://extensions` → Load unpacked. Dev: `pnpm dev:ext`.
+- **Web:** `cd apps/web && npx --yes pnpm@10 build`, or `pnpm dev:web` (:3000).
+- **DB:** `pnpm db:generate` then `pnpm db:migrate` (needs `DATABASE_URL`).
+
+### Version traps that already bit once
+
+- **TypeScript is pinned to `^6.0.3`, not 7.** TS 7.0.2 installs and typechecks
+  fine, but `typescript-eslint` hard-refuses it (`supported: >=4.8.4 <6.1.0`), so
+  `pnpm lint` dies before linting anything. Don't "upgrade" it until
+  typescript-eslint ships TS 7 support.
+- **Relative imports inside packages carry no `.js` extension.** The packages
+  ship TypeScript source (`exports` → `src/index.ts`) and Turbopack will not map
+  `./foo.js` → `./foo.ts`; Next fails the build with "The module has no exports
+  at all". `moduleResolution: "bundler"` makes extensionless correct.
+- **`.npmrc` sets `node-linker=hoisted`** because WXT can't resolve its Vite
+  plugin chain under pnpm's default symlinked layout.
+- **`@types/node` needs an explicit `"types": ["node"]`** in `packages/db` and
+  `packages/agents` — TS 6 doesn't pick it up by typeRoots walk-up here.
+
 ## Architecture
 
 ```

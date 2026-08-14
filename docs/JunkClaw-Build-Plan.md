@@ -143,10 +143,20 @@ learn about breakage from telemetry, not from users.
 The extension sends **market facts only**: make, model, year, trim, price,
 mileage, coarse location, first-seen, last-seen, URL hash, dealer flag.
 
-It **never** sends seller names, profile links, photos, or message contents to
-our server. That data is personal information under PIPEDA, and relaying it is
+It **never** sends seller names, profile links, seller ids, or message contents
+to our server. That data is personal information under PIPEDA, and relaying it is
 what would turn a defensible tool into a liability. Message drafting sends the
 listing facts and the user's own limits — nothing about the seller as a person.
+
+**Amended 2026-08-14: listing photos are sent and stored.** These are the
+photos of the vehicle from the listing — what the dashboard displays so a car
+looks like a car rather than a row in a table.
+
+We store Facebook's CDN **URL, not the image**. Worth knowing: those URLs are
+signed and expire after hours or days, so a blank image is expected rather than
+a bug, and re-ingesting a listing refreshes it.
+
+Seller profile photos are a different field and are not included.
 
 ---
 

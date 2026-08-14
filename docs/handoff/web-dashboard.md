@@ -31,11 +31,19 @@ These aren't style preferences; each one is load-bearing and the reason is short
    currently `null` by design — its weights must be fitted against a real corpus
    and there isn't one yet. Build the UI so a null score is normal, not an error
    state.
-4. **Never render seller names, profile links, or photos.** They aren't in the
-   API because they never leave the user's browser — under PIPEDA that's the
-   whole point of the architecture. If you find yourself needing one, that's a
-   conversation, not a ticket.
-5. **Frame as information, not advice.** "Similar ones ask $X" — not "offer $Y".
+4. **Vehicle photos yes, seller identity no.** `photoUrls` carries the listing's
+   photos of the car — use them. Seller names and profile links aren't in the API
+   because they never leave the user's browser. Users click through to Facebook
+   for anything about the seller.
+
+   Two things about the photos: Facebook's CDN URLs are **signed and expire**, so
+   render a placeholder rather than treating a broken image as an error. And
+   `photoUrls` can be empty — plenty of listings have no photo.
+
+5. **Linking to a listing:** we store `externalId`, not the URL. Build the link as
+   `https://www.facebook.com/marketplace/item/{externalId}` — it's deterministic,
+   which is why storing the URL would be redundant.
+6. **Frame as information, not advice.** "Similar ones ask $X" — not "offer $Y".
 
 ---
 

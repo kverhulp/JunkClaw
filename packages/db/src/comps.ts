@@ -122,6 +122,7 @@ export async function getEnrichedListing(
     location: { city: row.city, region: row.region, country: row.country },
     isDealer: row.isDealer,
     description: row.description,
+    photoUrls: (row.photoUrls as string[]) ?? [],
     firstSeenAt: row.firstSeenAt.toISOString(),
     lastSeenAt: row.lastSeenAt.toISOString(),
     rawPayload: row.rawPayload as Record<string, unknown>,

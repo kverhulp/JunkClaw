@@ -99,9 +99,11 @@ order encodes dependencies that aren't obvious from the code.
 - **The price ceiling is enforced in `core`, after the draft exists and before
   the composer fill — never as an instruction in a prompt.** A model that talks
   itself past a spending limit is the one failure we cannot ship.
-- **Never send seller PII off-device.** No seller names, profile links, photos,
-  or message contents reach the server. The ingest DTO in `packages/schema` omits
-  them by construction; keep it that way. This is PIPEDA, not preference.
+- **Never send seller PII off-device.** No seller names, profile links, seller
+  ids, or message contents reach the server. The ingest DTO in `packages/schema`
+  omits them by construction; keep it that way. This is PIPEDA, not preference.
+  **Vehicle photo URLs are allowed** (decision 2026-08-14) — the dashboard
+  displays them. A photo of a car is not personal information; the seller is.
 - **Never select on Facebook's CSS classes.** Parse the GraphQL/JSON payloads.
   Keep the DOM fallback, and keep the parse-failure alarm working.
 - **The overlay renders in a shadow DOM.** Facebook's stylesheet must not reach

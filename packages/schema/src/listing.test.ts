@@ -13,6 +13,7 @@ const validFacts = {
   location: { city: "Charlottetown", region: "PE", country: "CA" },
   isDealer: false,
   description: "One owner, winter tires included.",
+  photoUrls: ["https://scontent.xx.fbcdn.net/v/photo.jpg"],
   firstSeenAt: "2026-08-01T12:00:00.000Z",
   lastSeenAt: "2026-08-14T12:00:00.000Z",
   rawPayload: { listing_price: { amount: "12500" } },

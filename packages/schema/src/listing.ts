@@ -16,6 +16,16 @@ export const CoarseLocationSchema = z.strictObject({
 export type CoarseLocation = z.infer<typeof CoarseLocationSchema>;
 
 /**
+ * A Facebook CDN photo URL.
+ *
+ * These are signed and expire — hours to days — so a stored URL will eventually
+ * render blank. That is accepted: the alternative is hosting other people's
+ * photos ourselves, which is a bigger liability than an occasional broken image.
+ * Re-ingesting a listing refreshes them.
+ */
+export const PhotoUrlSchema = z.url().max(2_000);
+
+/**
  * THE PII BOUNDARY.
  *
  * This is the only shape the extension is allowed to send to our server, and it
@@ -24,8 +34,8 @@ export type CoarseLocation = z.infer<typeof CoarseLocationSchema>;
  * the call site. That data is personal information under PIPEDA and relaying it
  * is what would turn a defensible tool into a liability.
  *
- * If you are here because you want to add a field: market facts yes, anything
- * about the seller as a person no.
+ * If you are here because you want to add a field: market facts and vehicle
+ * photos yes; anything identifying the seller as a person, no.
  */
 export const ListingFactsSchema = z.strictObject({
   source: SourceSchema,
@@ -68,6 +78,14 @@ export const ListingFactsSchema = z.strictObject({
    * copy about the vehicle, not seller identity. Truncated client-side.
    */
   description: z.string().max(8_000),
+
+  /**
+   * The listing's photos of the vehicle — what the dashboard displays.
+   *
+   * Sourced from `primary_listing_photo` / `listing_photos`. The seller's own
+   * profile photo is a different field and is not collected.
+   */
+  photoUrls: z.array(PhotoUrlSchema).max(20),
 
   /** When the extension first and last saw it. Days on market is derived from these. */
   firstSeenAt: z.iso.datetime(),

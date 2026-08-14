@@ -94,9 +94,10 @@ export const extensionTokens = pgTable(
 /* ------------------------------------------------------------------ *
  * The corpus. This is M0 — everything else waits on it.
  *
- * Note what is NOT here: no seller name, no profile link, no photos, no
- * message bodies. The ingest DTO in @junkclaw/schema can't carry them and
- * this table has nowhere to put them. That is the design.
+ * Note what is NOT here: no seller name, no profile link, no seller id, no
+ * message bodies. The ingest DTO in @junkclaw/schema can't carry them and this
+ * table has nowhere to put them. Vehicle photos ARE here as of 2026-08-14 — a
+ * picture of a car is not personal information; the seller is.
  * ------------------------------------------------------------------ */
 
 export const listings = pgTable(
@@ -130,6 +131,12 @@ export const listings = pgTable(
     /** Changes both the comp math and the negotiation script. */
     isDealer: boolean("is_dealer").notNull().default(false),
     description: text("description").notNull().default(""),
+    /**
+     * The listing's vehicle photos, for the dashboard. Facebook's CDN signs
+     * these URLs and they expire, so treat a blank image as normal rather than
+     * as data loss — re-ingesting the listing refreshes them.
+     */
+    photoUrls: jsonb("photo_urls").notNull().default([]),
 
     /** Days on market is derived from these two — our best signal, and free. */
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),

@@ -41,6 +41,7 @@ function corolla(overrides: {
     location: { city: "Charlottetown", region: overrides.region ?? "PE", country: "CA" },
     isDealer: overrides.isDealer ?? false,
     description: "",
+    photoUrls: [],
     firstSeenAt: "2026-08-01T00:00:00.000Z",
     lastSeenAt: "2026-08-14T00:00:00.000Z",
     rawPayload: {},

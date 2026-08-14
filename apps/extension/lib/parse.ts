@@ -44,6 +44,10 @@ interface RawMoney {
   amount_with_offset_in_currency?: unknown;
 }
 
+interface RawPhoto {
+  image?: { uri?: unknown };
+}
+
 interface RawListing {
   id?: unknown;
   marketplace_listing_title?: unknown;
@@ -56,6 +60,8 @@ interface RawListing {
   marketplace_listing_category_id?: unknown;
   is_sold?: unknown;
   is_live?: unknown;
+  primary_listing_photo?: RawPhoto | null;
+  listing_photos?: RawPhoto[];
 }
 
 /**
@@ -162,6 +168,7 @@ function toFacts(listing: RawListing, observedAt: Date): UnhashedListing | null 
     // is inferred later by risk-analyst from the description.
     isDealer: false,
     description: "",
+    photoUrls: collectPhotoUrls(listing),
     firstSeenAt: firstSeen.toISOString(),
     lastSeenAt: observedAt.toISOString(),
     rawPayload: stripPii(listing),
@@ -216,6 +223,26 @@ export function parseLocation(
 }
 
 /**
+ * Vehicle photos, for the dashboard to display.
+ *
+ * Deliberately allowed across the boundary (2026-08-14). Seller identity is not,
+ * and the two are easy to conflate: `primary_listing_photo` is a picture of the
+ * car; `marketplace_listing_seller` is a person, and is still dropped on sight.
+ */
+export function collectPhotoUrls(listing: RawListing): string[] {
+  const photos = [listing.primary_listing_photo, ...(listing.listing_photos ?? [])];
+  const urls: string[] = [];
+
+  for (const photo of photos) {
+    const uri = asString(photo?.image?.uri);
+    // Facebook CDN URLs are signed and long; the schema caps them at 2,000 chars.
+    if (uri && uri.length <= 2_000 && !urls.includes(uri)) urls.push(uri);
+  }
+
+  return urls.slice(0, 20);
+}
+
+/**
  * Keeps the raw payload for re-parsing history and for parse-sentinel to diff,
  * minus anything identifying a person. Whitelist, not blocklist: a field
  * Facebook adds tomorrow is excluded by default rather than included by
@@ -236,6 +263,9 @@ const RAW_PAYLOAD_KEYS = [
   "is_pending",
   "is_hidden",
   "delivery_types",
+  // Photos are allowed across the boundary now, so keeping them in the raw
+  // payload is consistent. Seller identity is still absent by omission.
+  "primary_listing_photo",
 ] as const;
 
 export function stripPii(listing: RawListing): Record<string, unknown> {

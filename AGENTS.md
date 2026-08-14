@@ -20,9 +20,10 @@ for technical ones. Both are authoritative; this file is the short version.
 through `npx --yes pnpm@10`. Install it properly if you get tired of the prefix.
 
 - **Install:** `npx --yes pnpm@10 install`
-- **Everything green:** `npx --yes pnpm@10 -r typecheck && npx --yes pnpm@10 test && npx --yes pnpm@10 lint`
-  Baseline: **6 packages typecheck clean, 34 tests passing, 0 lint errors.** Report
+- **Everything green (what CI runs):** `npx --yes pnpm@10 verify`
+  Baseline: **5 guards, 0 lint errors, 6 packages typechecking, 34 tests.** Report
   the counts after your change.
+- **Guards only** (fast, run before pushing): `npx --yes pnpm@10 guards`
 - **Extension:** `cd apps/extension && npx --yes pnpm@10 build` → loads from
   `.output/chrome-mv3` via `chrome://extensions` → Load unpacked. Dev: `pnpm dev:ext`.
 - **Web:** `cd apps/web && npx --yes pnpm@10 build`, or `pnpm dev:web` (:3000).
@@ -53,6 +54,10 @@ packages/core     deterministic valuation: normalize, dedup, comps, scoring
 packages/agents   Mastra agents, workflows, tools, memory
 packages/db       Drizzle schema + migrations (Neon Postgres)
 ```
+
+CI runs the same gate on every push and PR, plus both builds — see
+[`docs/ci-cd.md`](docs/ci-cd.md) for the pipeline, the guards, and what is
+deliberately not automated.
 
 ## Hard rules
 

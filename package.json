@@ -14,6 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
+    "guards": "./scripts/guards.sh",
+    "verify": "./scripts/guards.sh && eslint . && pnpm -r typecheck && vitest run",
     "db:generate": "pnpm --filter @junkclaw/db generate",
     "db:migrate": "pnpm --filter @junkclaw/db migrate"
   },

@@ -1,0 +1,69 @@
+name: Migrate database
+
+# Migrations are the one deploy step that can't be rolled back by redeploying,
+# so this is manual by default. Automate it only once there is something to roll
+# back to.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        options: [staging, production]
+        default: staging
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: drizzle-kit migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # GitHub environments give this a required-reviewer gate and hold the
+    # DATABASE_URL secret per environment. Create them under
+    # Settings → Environments before the first run.
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Fail with a sentence someone can act on, rather than whatever
+      # drizzle-kit says when it gets an empty connection string.
+      - name: Check DATABASE_URL is configured
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::DATABASE_URL is not set for the '${{ inputs.environment }}' environment."
+            echo "Add it under Settings → Environments → ${{ inputs.environment }} → Environment secrets."
+            exit 1
+          fi
+
+      # Catches a schema.ts edited without regenerating migrations — otherwise
+      # the code expects a column the database doesn't have, at runtime.
+      - name: Migrations are up to date with schema
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          pnpm db:generate
+          if ! git diff --quiet -- packages/db/migrations; then
+            echo "::error::packages/db/schema.ts has changes with no committed migration."
+            echo "Run 'pnpm db:generate' locally and commit the result."
+            git diff --stat -- packages/db/migrations
+            exit 1
+          fi
+
+      - name: Apply migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm db:migrate

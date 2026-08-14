@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to the same branch makes the in-flight run irrelevant. Cancel it
+# rather than paying for two answers to the same question.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Pinned rather than 'lts/*' so a Node release can't turn a green branch red
+  # overnight. Bump deliberately; package.json engines requires >=22.
+  NODE_VERSION: "22"
+
+jobs:
+  verify:
+    name: Lint · typecheck · test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        # Version comes from packageManager in package.json.
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # --frozen-lockfile: a PR that edits package.json without regenerating the
+      # lockfile fails here rather than silently resolving different versions
+      # than anyone tested against.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Repo guards
+        run: ./scripts/guards.sh
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm test
+
+  build:
+    name: Build web · extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: verify
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Both builds run without DATABASE_URL on purpose: @junkclaw/db and the
+      # Mastra instance are lazily constructed, so a missing env var must not be
+      # discoverable only at deploy time.
+      - name: Build web
+        run: pnpm --filter @junkclaw/web build
+
+      - name: Build extension
+        run: pnpm --filter @junkclaw/extension build
+
+      # The reviewable artifact. Download it from the run summary and load it
+      # unpacked in Chrome to check a change by hand before merging.
+      - name: Upload extension build
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-chrome-mv3-${{ github.sha }}
+          path: apps/extension/.output/chrome-mv3
+          retention-days: 14
+          if-no-files-found: error

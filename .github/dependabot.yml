@@ -1,0 +1,32 @@
+version: 2
+
+updates:
+  # Grouped weekly rather than a PR per package — this repo has ~600 transitive
+  # deps and ungrouped Dependabot is how a small project drowns.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      dev-tooling:
+        patterns: ["eslint*", "@eslint/*", "typescript-eslint", "vitest", "@types/*"]
+      mastra:
+        patterns: ["@mastra/*"]
+      next:
+        patterns: ["next", "react", "react-dom", "@types/react", "@types/react-dom"]
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # TS 7 installs and typechecks fine but typescript-eslint hard-refuses it
+      # (supported: >=4.8.4 <6.1.0), which kills `pnpm lint` before it lints
+      # anything. Lift this once typescript-eslint ships TS 7 support:
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      - dependency-name: typescript
+        versions: [">=7.0.0"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

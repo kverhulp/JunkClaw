@@ -50,7 +50,7 @@ Turns a number into a product. Everything here assumes M0 said yes.
 
 | # | Goal | Where | Done when |
 |---|---|---|---|
-| 1 | **Real auth** | `apps/web/lib/auth.ts` | better-auth magic link + Google; "connect extension" page issues tokens |
+| 1 | **Real auth** *(API ours, UI theirs)* | `apps/web/lib/auth.ts` | better-auth magic link + Google, and `/api/tokens`. The connect-extension **page** is the dashboard owner's — see [`handoff/web-dashboard.md`](handoff/web-dashboard.md) |
 | 2 | **Comp curation** | `comp-curator`, `score-listing.curate-comps` | Widening ladder walked deterministically; agent decides only *how far*, never the number |
 | 3 | **Deal + Fit scoring** | `packages/core/scoring.ts` | Weights fitted against the corpus, not invented. Shown together, never averaged |
 | 4 | **Risk flags** | `risk-analyst`, `score-listing.flag-risks` | Every flag carries its supporting quote |
@@ -88,6 +88,13 @@ Carried from the build plan, still unanswered. None block M0.
    this — if PEI Marketplace alone can't support a valuation, seeding from
    elsewhere stops being optional.
 3. **Product name.** "JunkClaw" is the working directory.
+
+## Not ours
+
+The `apps/web` dashboard UI belongs to a coworker. The contract they build
+against — and the UI items they need — live in
+[`handoff/web-dashboard.md`](handoff/web-dashboard.md). We own the API routes
+under it.
 
 ## Infrastructure still owed
 

@@ -91,22 +91,19 @@ The schema is the contract. Do not weaken it by replacing it with string, duplic
 
 ---
 
-## Which listing schema is live
+## The listing schema
 
-Two listing shapes exist in `packages/schema` and they are not interchangeable:
+**`listing.ts` → `ListingFactsSchema`** is the only listing schema. It is what
+the extension sends, what `/api/ingest` validates, and what the corpus stores.
 
-- **`listing.ts` → `ListingFactsSchema`** is the wire contract. It is what the
-  extension sends, what `/api/ingest` validates, and what the corpus stores. It
-  is a `strictObject` because that is what keeps seller PII from riding along in
-  an unknown key — see the build plan, *What crosses the network*. Do not relax
-  it, and do not replace it without replacing its tests.
-- **`vehicle-listing.ts` → `vehicleListingSchema`** is a proposed multi-source
-  shape (price ranges, a `service` field, several listing ids for one car). It is
-  a sketch for when Kijiji and AutoTrader are collected too, and nothing consumes
-  it yet.
+It is a `strictObject` because that is what keeps seller PII from riding along in
+an unknown key — see the build plan, *What crosses the network*. Do not relax it,
+and do not replace it without replacing its tests.
 
-`docs/schemas/vehicle-listing.schema.json` is the JSON Schema rendering of the
-second one, kept for sharing the shape outside TypeScript.
+A second, multi-source shape (`vehicleListingSchema`) was proposed and removed:
+two listing schemas in one package drift, and the one nothing consumes is the one
+that rots. When Kijiji and AutoTrader collection arrives, extend this schema
+rather than adding a rival.
 
 ## Applying these rules to the live contract
 
@@ -116,6 +113,6 @@ The policy above is now enforced in `ListingFactsSchema` rather than only stated
   A length check accepts `"XX"`.
 - `currency` uses `SupportedCurrencySchema`, drawn from the canonical ISO 4217
   list and narrowed to what the comp math actually supports.
-- `service.ts` was empty, which is why `vehicle-listing.ts` did not compile. It
-  now defines the services we collect from, and a test fails if it drifts out of
-  step with `SourceSchema`.
+- `service.ts` was empty. It now holds the canonical service list, and
+  `SourceSchema` is an alias for it rather than a second enum — a test fails if
+  someone reintroduces a copy.

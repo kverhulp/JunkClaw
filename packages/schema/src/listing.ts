@@ -2,9 +2,17 @@ import { z } from "zod";
 import { VehicleSchema } from "./vehicle";
 import { countryCodeAlpha2Schema } from "./country";
 import { currencyCodeSchema } from "./currency";
+import { serviceSchema, type Service } from "./service";
 
-export const SourceSchema = z.enum(["marketplace", "kijiji", "autotrader"]);
-export type Source = z.infer<typeof SourceSchema>;
+/**
+ * Where a listing came from.
+ *
+ * An alias for `serviceSchema` rather than a second enum: docs/schemas.md
+ * requires service values to come from the canonical schema, and two lists that
+ * must agree are two lists that eventually won't.
+ */
+export const SourceSchema = serviceSchema;
+export type Source = Service;
 
 /**
  * Coarse location only. Never a street address, never a map pin — "Charlottetown,

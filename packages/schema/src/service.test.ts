@@ -13,9 +13,10 @@ describe("serviceSchema", () => {
     expect(serviceSchema.safeParse("craigslist").success).toBe(false);
   });
 
-  // Two names for the same set is how they drift. If you add a service to one,
-  // this fails until you add it to the other.
-  it("stays in step with SourceSchema", () => {
-    expect([...LISTING_SERVICES].sort()).toEqual([...SourceSchema.options].sort());
+  // SourceSchema is an alias, not a copy — this fails if someone reintroduces a
+  // second list, which is the drift docs/schemas.md exists to prevent.
+  it("is the same schema SourceSchema names", () => {
+    expect(SourceSchema).toBe(serviceSchema);
+    expect([...SourceSchema.options].sort()).toEqual([...LISTING_SERVICES].sort());
   });
 });

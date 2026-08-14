@@ -1,30 +1,89 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ScoreRequestSchema, type ScoreResponse } from "@junkclaw/schema";
+import {
+  ScoreRequestSchema,
+  type Analysis,
+  type ScoreResponse,
+} from "@junkclaw/schema";
+import {
+  dealScore,
+  fitScore,
+  priceDeltaCents,
+  walkWideningLadder,
+} from "@junkclaw/core";
+import {
+  compFetcher,
+  db,
+  getCriteria,
+  getEnrichedListing,
+  getListingHistory,
+} from "@junkclaw/db";
 import { requireUser } from "@/lib/auth";
 import { handleError, parseBody } from "@/lib/respond";
 
 /**
  * POST /api/score — cache-first, so browsing never blocks.
  *
- * The extension asks about the listings currently on screen. We answer instantly
- * with whatever is already computed and mark the rest pending; the badge renders
- * "…" for those and refetches. Nothing here waits on a model.
+ * The extension asks about the listings currently on screen. Anything we can
+ * answer, we answer now; the rest come back as pending and the badge refetches.
  *
- * Today every id comes back pending, because M0 has no corpus yet. That is the
- * honest answer, and it is also exactly what the cold-start weeks will look like.
+ * The headline is `priceDeltaCents`, not a score. "$1,400 below similar asking
+ * prices" is a claim we can defend from the corpus; a composite 0–100 would be
+ * false precision from weights nobody has fitted yet — which is why `dealScore`
+ * returns null until there's data to fit it against.
  */
 export async function POST(request: NextRequest) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
 
     const parsed = await parseBody(request, ScoreRequestSchema);
     if (!parsed.ok) return parsed.response;
 
-    // TODO(M1): read cached analyses, enqueue scoreListingWorkflow for the misses.
-    const body: ScoreResponse = {
-      analyses: [],
-      pending: parsed.data.listingIds,
-    };
+    const database = db();
+    const fetchComps = compFetcher(database);
+    const criteria = await getCriteria(database, user.id);
+    const analyses: Analysis[] = [];
+    const pending: string[] = [];
+
+    for (const listingId of parsed.data.listingIds) {
+      const listing = await getEnrichedListing(database, listingId);
+      if (!listing) {
+        pending.push(listingId);
+        continue;
+      }
+
+      const [{ comps }, history] = await Promise.all([
+        walkWideningLadder(listing, fetchComps),
+        getListingHistory(database, listingId),
+      ]);
+
+      analyses.push({
+        listingId,
+        // Negative means cheaper than comparable asks — the direction the user
+        // cares about, so the direction the sign points.
+        priceDeltaCents:
+          comps.confidence === "insufficient"
+            ? 0
+            : priceDeltaCents(listing.priceCents, comps.medianPriceCents),
+        dealScore: dealScore({
+          priceCents: listing.priceCents,
+          comps,
+          daysOnMarket: history?.daysOnMarket ?? 0,
+          priceDropCount: history?.priceDropCount ?? 0,
+          isDealer: listing.isDealer,
+        }),
+        // Distance is null until we have town coordinates — fitScore treats
+        // that as unknown and skips the dimension rather than guessing.
+        fitScore: fitScore({ listing, criteria, distanceKm: null }),
+        daysOnMarket: history?.daysOnMarket ?? 0,
+        priceDropCount: history?.priceDropCount ?? 0,
+        comps,
+        // Risk flags come from the risk-analyst agent (M1).
+        riskFlags: [],
+        computedAt: new Date().toISOString(),
+      });
+    }
+
+    const body: ScoreResponse = { analyses, pending };
     return NextResponse.json(body);
   } catch (error) {
     return handleError(error);

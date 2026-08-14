@@ -1,7 +1,8 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import { DraftMessageSchema, NegotiationLimitsSchema } from "@junkclaw/schema";
-import { enforceCeiling } from "@junkclaw/core";
+import { enforceCeiling, extractPricesCents } from "@junkclaw/core";
+import { negotiationCopilot } from "../agents/negotiation-copilot";
 
 /**
  * `negotiate` — draft -> SUSPEND -> user edits/approves -> ceiling check -> composer fill.
@@ -28,10 +29,30 @@ const DraftStep = createStep({
     limits: NegotiationLimitsSchema,
     draft: DraftMessageSchema,
   }),
-  execute: async () => {
-    // negotiationCopilot.generate(..., { structuredOutput: { schema: DraftMessageSchema } })
-    // Message #1 asks for the VIN.
-    throw new Error("negotiate.draft: not implemented — M2");
+  execute: async ({ inputData }) => {
+    const response = await negotiationCopilot.generate(
+      [
+        {
+          role: "user",
+          content:
+            `Draft the opening message for listing ${inputData.listingId}. ` +
+            `Use your tools to ground it in the comps and the listing's history. ` +
+            `Ask for the VIN. Do not name a price in an opening message.`,
+        },
+      ],
+      { structuredOutput: { schema: DraftMessageSchema } },
+    );
+
+    const draft = response.object;
+    if (!draft) {
+      throw new Error("negotiate.draft: model returned no structured draft");
+    }
+
+    return {
+      negotiationId: inputData.negotiationId,
+      limits: inputData.limits,
+      draft,
+    };
   },
 });
 
@@ -57,8 +78,34 @@ const ApprovalStep = createStep({
     draft: DraftMessageSchema,
     approved: z.boolean(),
   }),
-  execute: async () => {
-    throw new Error("negotiate.await-approval: not implemented — M2, uses suspend()/resumeStream()");
+  execute: async ({ inputData, resumeData, suspend }) => {
+    // No decision yet: park the run in Postgres and return. The user may take
+    // minutes or days; a serverless function timeout must not end a negotiation.
+    if (!resumeData) {
+      return suspend({
+        negotiationId: inputData.negotiationId,
+        draft: inputData.draft,
+      });
+    }
+
+    // An edited body is re-parsed for prices rather than trusted. The user
+    // changing "$7,000" to "$9,000" and hitting approve is precisely the case
+    // the ceiling exists for, so the edit must not carry the original's
+    // declared prices forward.
+    const draft = resumeData.editedBody
+      ? {
+          ...inputData.draft,
+          body: resumeData.editedBody,
+          mentionedPricesCents: extractPricesCents(resumeData.editedBody),
+        }
+      : inputData.draft;
+
+    return {
+      negotiationId: inputData.negotiationId,
+      limits: inputData.limits,
+      draft,
+      approved: resumeData.approved,
+    };
   },
 });
 

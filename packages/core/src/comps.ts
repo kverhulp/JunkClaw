@@ -75,15 +75,55 @@ export interface WideningRung {
 }
 
 export const WIDENING_LADDER: WideningRung[] = [
-  { yearBand: 0, radiusKm: 100, ignoreTrim: false, label: "exact year and trim, 100 km" },
-  { yearBand: 1, radiusKm: 100, ignoreTrim: false, label: "±1 year, 100 km" },
-  { yearBand: 1, radiusKm: 250, ignoreTrim: true, label: "±1 year, any trim, 250 km" },
-  { yearBand: 2, radiusKm: 500, ignoreTrim: true, label: "±2 years, any trim, Maritimes" },
+  { yearBand: 0, radiusKm: 100, ignoreTrim: false, label: "same year and trim, within 100 km" },
+  { yearBand: 1, radiusKm: 100, ignoreTrim: false, label: "±1 year, within 100 km" },
+  { yearBand: 1, radiusKm: 250, ignoreTrim: true, label: "±1 year, any trim, within 250 km" },
+  { yearBand: 2, radiusKm: 500, ignoreTrim: true, label: "±2 years, any trim, Maritime-wide" },
 ];
 
-export function selectComps(
-  _subject: EnrichedListing,
-  _rung: WideningRung,
-): Promise<CompCandidate[]> {
-  throw new Error("selectComps: not implemented — M1, needs the corpus query layer");
+/** Injected so the ladder is testable without a database. */
+export type CompFetcher = (
+  subject: EnrichedListing,
+  rung: WideningRung,
+) => Promise<CompCandidate[]>;
+
+export interface LadderResult {
+  comps: CompSet;
+  /** Which rung produced the set, or null when even the widest was too thin. */
+  rung: WideningRung | null;
+}
+
+/**
+ * Walks the ladder and stops at the first rung with a usable sample.
+ *
+ * Stopping early matters: exact-year, exact-trim comps are worth more than a
+ * bigger set assembled by relaxing everything, so we take the narrowest rung
+ * that clears MIN_COMPS rather than the largest sample available.
+ *
+ * When even the widest rung can't clear it, this returns `"insufficient"` — a
+ * real answer the UI renders as "not enough data". In a market this thin that
+ * will happen often, and a confident wrong number is worse than an absent one.
+ */
+export async function walkWideningLadder(
+  subject: EnrichedListing,
+  fetch: CompFetcher,
+  ladder: WideningRung[] = WIDENING_LADDER,
+): Promise<LadderResult> {
+  let widest: { candidates: CompCandidate[]; rung: WideningRung } | null = null;
+
+  for (const rung of ladder) {
+    const candidates = await fetch(subject, rung);
+    widest = { candidates, rung };
+
+    if (confidenceFor(candidates.length) !== "insufficient") {
+      return { comps: buildCompSet(candidates, rung.label), rung };
+    }
+  }
+
+  // Report what the widest attempt found, so the UI can say "only 2 similar
+  // listings in the Maritimes" rather than a bare shrug.
+  return {
+    comps: buildCompSet(widest?.candidates ?? [], widest?.rung.label ?? null),
+    rung: null,
+  };
 }

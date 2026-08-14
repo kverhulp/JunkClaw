@@ -1,16 +1,20 @@
 import type { RuntimeMessage, StatusResponse } from "@/lib/protocol";
+import { IngestQueue } from "@/lib/queue";
+import { postIngest } from "@/lib/api";
+import { apiBaseUrl, apiToken, enabled } from "@/lib/settings";
 
 /**
  * The MV3 service worker: queue, batch, retry, auth.
  *
  * It exists so browsing never blocks on the network. The content script hands
- * listings over and forgets about them; this worker batches them and posts once
- * per burst rather than once per card.
+ * listings over and forgets about them; this worker collapses a scroll burst
+ * into one request.
  *
  * What it deliberately does NOT do: fetch Marketplace on a timer. Background
  * polling is exactly the behaviour Meta's enforcement targets, and the account
- * that gets banned is the user's own. If opt-in alerting ever ships (v2), it
- * ships with unmissable consent and never on by default.
+ * that gets banned is the user's own. The only timer here is the queue's flush
+ * debounce, which sends data we already have — it never asks Facebook for
+ * anything. (scripts/guards.sh enforces the distinction.)
  */
 
 interface SessionStats {
@@ -25,16 +29,29 @@ const stats: SessionStats = {
   lastIngestAt: null,
 };
 
-/** Listings waiting to be flushed. Keyed by urlHash so a re-scroll doesn't duplicate. */
-const queue = new Map<string, unknown>();
+const queue = new IngestQueue({
+  schedule: (fn, ms) => setTimeout(fn, ms),
+  send: async (batch) => {
+    const [baseUrl, token] = await Promise.all([apiBaseUrl.getValue(), apiToken.getValue()]);
+    // No token means the user hasn't connected the extension yet. Throwing keeps
+    // the batch queued, so listings gathered before setup aren't lost — they go
+    // out on the first flush after a token is pasted in.
+    if (!token) throw new Error("Extension is not connected — no API token set");
+
+    await postIngest({ baseUrl, token }, { listings: batch });
+    stats.lastIngestAt = new Date().toISOString();
+  },
+});
 
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: RuntimeMessage, _sender, sendResponse) => {
     switch (message.kind) {
       case "listings-observed":
-        stats.seenThisSession += message.count;
-        // TODO(M0): key each listing by urlHash into `queue`, then flush on a
-        // short debounce — one request per scroll burst, not per card.
+        void (async () => {
+          if (!(await enabled.getValue())) return;
+          stats.seenThisSession += message.listings.length;
+          queue.add(message.listings);
+        })();
         return false;
 
       case "parse-failure":
@@ -44,15 +61,17 @@ export default defineBackground(() => {
         return false;
 
       case "get-status": {
-        const response: StatusResponse = {
-          enabled: true,
-          seenThisSession: stats.seenThisSession,
-          queuedForIngest: queue.size,
-          parseFailuresThisSession: stats.parseFailuresThisSession,
-          lastIngestAt: stats.lastIngestAt,
-        };
-        sendResponse(response);
-        return true;
+        void (async () => {
+          const response: StatusResponse = {
+            enabled: await enabled.getValue(),
+            seenThisSession: stats.seenThisSession,
+            queuedForIngest: queue.size,
+            parseFailuresThisSession: stats.parseFailuresThisSession,
+            lastIngestAt: stats.lastIngestAt,
+          };
+          sendResponse(response);
+        })();
+        return true; // keeps the message channel open for the async response
       }
     }
   });

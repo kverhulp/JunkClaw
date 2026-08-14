@@ -1,3 +1,5 @@
+import type { ListingFacts } from "@junkclaw/schema";
+
 /**
  * The two hops a listing makes before it leaves the browser:
  *
@@ -28,9 +30,16 @@ export function isPagePayloadMessage(value: unknown): value is PagePayloadMessag
   );
 }
 
-/** Isolated world -> background. */
+/**
+ * Isolated world -> background.
+ *
+ * Parsing and hashing happen in the content script, so what crosses this hop is
+ * already the PII-free ingest shape. The background worker queues and posts; it
+ * never sees a raw Facebook payload except on the failure path, where the raw
+ * body is exactly what parse-sentinel needs to diff.
+ */
 export type RuntimeMessage =
-  | { kind: "listings-observed"; count: number; payload: unknown }
+  | { kind: "listings-observed"; listings: ListingFacts[] }
   | { kind: "parse-failure"; stage: string; message: string; payload: unknown }
   | { kind: "get-status" };
 

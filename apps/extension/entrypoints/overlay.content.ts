@@ -1,6 +1,6 @@
 import { isPagePayloadMessage, type RuntimeMessage } from "@/lib/protocol";
 import { mountBadge } from "@/lib/overlay";
-import { PayloadShapeError, parseListings } from "@/lib/parse";
+import { PayloadShapeError, attachUrlHashes, parseListings } from "@/lib/parse";
 
 /**
  * The isolated-world half of the content script.
@@ -21,10 +21,14 @@ export default defineContentScript({
       if (!isPagePayloadMessage(event.data)) return;
 
       try {
-        const listings = parseListings(event.data.body);
-        if (listings.length === 0) return;
+        const parsed = parseListings(event.data.body);
+        if (parsed.length === 0) return;
 
-        send({ kind: "listings-observed", count: listings.length, payload: listings });
+        // Hashing is async and the listener is not, so this deliberately
+        // detaches: a slow hash must never delay Facebook's own event loop.
+        void attachUrlHashes(parsed).then((listings) => {
+          send({ kind: "listings-observed", listings });
+        });
       } catch (error) {
         // Alarm on the parse-failure rate, so we learn about breakage from
         // telemetry rather than from users. The raw payload rides along so

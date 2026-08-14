@@ -94,6 +94,17 @@ export function findListingEdges(payload: unknown): unknown[] | null {
 }
 
 /**
+ * A listing before its URL hash has been computed.
+ *
+ * Hashing needs `await crypto.subtle`, and parsing is otherwise synchronous, so
+ * the two are separate steps with separate types. Making the intermediate a
+ * distinct type means an unhashed listing can't be mistaken for a sendable one —
+ * an empty `urlHash` string would have passed every check until the server
+ * rejected the batch.
+ */
+export type UnhashedListing = Omit<ListingFacts, "urlHash">;
+
+/**
  * Parses a Marketplace payload into listing facts.
  *
  * Listings that aren't usable (missing price, not a vehicle, sold) are skipped
@@ -101,7 +112,7 @@ export function findListingEdges(payload: unknown): unknown[] | null {
  * "Flat bed for truck". Only a payload whose *shape* we don't recognise raises,
  * because that is the signal `parse-sentinel` exists to act on.
  */
-export function parseListings(payload: unknown, observedAt: Date = new Date()): ListingFacts[] {
+export function parseListings(payload: unknown, observedAt: Date = new Date()): UnhashedListing[] {
   const edges = findListingEdges(payload);
   if (edges === null) {
     throw new PayloadShapeError(
@@ -110,7 +121,7 @@ export function parseListings(payload: unknown, observedAt: Date = new Date()): 
     );
   }
 
-  const out: ListingFacts[] = [];
+  const out: UnhashedListing[] = [];
   for (const edge of edges) {
     const listing = (edge as { node?: { listing?: RawListing } })?.node?.listing;
     if (!listing) continue;
@@ -120,7 +131,7 @@ export function parseListings(payload: unknown, observedAt: Date = new Date()): 
   return out;
 }
 
-function toFacts(listing: RawListing, observedAt: Date): ListingFacts | null {
+function toFacts(listing: RawListing, observedAt: Date): UnhashedListing | null {
   const externalId = asString(listing.id);
   const priceCents = parseAmountCents(listing.listing_price?.amount);
   const title = asString(listing.marketplace_listing_title) ?? asString(listing.custom_title);
@@ -141,7 +152,6 @@ function toFacts(listing: RawListing, observedAt: Date): ListingFacts | null {
   return {
     source: "marketplace",
     externalId,
-    urlHash: "", // filled by the caller, which can await crypto.subtle
     rawTitle: title,
     rawSubtitle,
     priceCents,
@@ -272,6 +282,24 @@ function asString(value: unknown): string | null {
  */
 export function parseFromDom(_card: HTMLElement): Partial<ListingFacts> | null {
   throw new PayloadShapeError("parseFromDom: not implemented — M0", "dom-fallback");
+}
+
+/**
+ * Attaches the URL hash to each parsed listing, producing sendable facts.
+ *
+ * This is the step that makes an UnhashedListing a ListingFacts. Hashes are
+ * computed concurrently — a scroll burst is 24 listings and doing them in
+ * sequence would add latency for no reason.
+ */
+export async function attachUrlHashes(
+  listings: UnhashedListing[],
+): Promise<ListingFacts[]> {
+  return Promise.all(
+    listings.map(async (listing) => ({
+      ...listing,
+      urlHash: await hashUrl(listingUrl(listing.externalId)),
+    })),
+  );
 }
 
 /** SHA-256 of the canonical URL. We key on this and never store the link itself. */

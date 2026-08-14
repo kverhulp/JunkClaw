@@ -1,4 +1,5 @@
 import { PAGE_MESSAGE_TAG, type PagePayloadMessage } from "@/lib/protocol";
+import { findListingEdges } from "@/lib/parse";
 import { parseResponseBody } from "@/lib/stream";
 
 /**
@@ -32,6 +33,11 @@ export default defineContentScript({
   runAt: "document_start",
 
   main() {
+    // Liveness marker. A MAIN-world script that fails to inject looks exactly
+    // like one that injects and intercepts nothing, and the difference decides
+    // where you go looking. Cheap to set, and page-visible on purpose.
+    (window as unknown as Record<string, unknown>).__junkclawPayloads = "alive";
+
     const originalFetch = window.fetch;
 
     window.fetch = async function patchedFetch(...args: Parameters<typeof fetch>) {
@@ -97,23 +103,42 @@ function forwardEmbeddedPayloads(attempt = 0): void {
     'script[type="application/json"]',
   );
 
-  let found = false;
+  let foundListings = false;
   for (const script of scripts) {
+    if (seenScripts.has(script)) continue;
     const text = script.textContent;
     if (!text || !text.includes("marketplace_feed_stories")) continue;
+
+    let payload: unknown;
     try {
-      forward("embedded:initial-html", JSON.parse(text));
-      found = true;
+      payload = JSON.parse(text);
     } catch {
-      // Not our shape.
+      // Still streaming — leave it unmarked so the next attempt retries it.
+      continue;
     }
+    seenScripts.add(script);
+
+    // Facebook emits the key twice: one object carries `edges`, another carries
+    // only `debug_info`/`buy_location`. Observed live 2026-08-14, and it lands
+    // first. Treating it as a hit stopped the retry loop before the payload
+    // with the 24 listings had even been streamed in — so we forwarded a
+    // payload with nothing in it and then stopped looking for the one that had
+    // everything. Require edges before calling it found.
+    if (findListingEdges(payload) === null) continue;
+
+    forward("embedded:initial-html", payload);
+    foundListings = true;
   }
 
-  // The document is still streaming; look again shortly.
-  if (!found && attempt < 20) {
+  // The document is still streaming; look again shortly. Ten seconds because
+  // the feed script is ~900 KB and arrives well after first paint.
+  if (!foundListings && attempt < 40) {
     setTimeout(() => forwardEmbeddedPayloads(attempt + 1), 250);
   }
 }
+
+/** Scripts already handled, so re-polling a streaming document stays cheap. */
+const seenScripts = new WeakSet<HTMLScriptElement>();
 
 function requestUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;

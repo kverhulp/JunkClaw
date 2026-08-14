@@ -120,20 +120,37 @@ export type UnhashedListing = Omit<ListingFacts, "urlHash">;
  */
 export function parseListings(payload: unknown, observedAt: Date = new Date()): UnhashedListing[] {
   const edges = findListingEdges(payload);
-  if (edges === null) {
+
+  // Not a listing feed, and that is the common case rather than an error.
+  // Facebook fires dozens of unrelated GraphQL calls per page and the
+  // interceptor forwards all of them; it also emits a second
+  // `marketplace_feed_stories` object carrying only `debug_info`/`buy_location`.
+  // Raising on those buried the one signal parse-sentinel exists to watch under
+  // a flood of false alarms, which is worse than having no signal at all.
+  if (edges === null) return [];
+
+  const out: UnhashedListing[] = [];
+  let candidates = 0;
+  for (const edge of edges) {
+    const listing = (edge as { node?: { listing?: RawListing } })?.node?.listing;
+    // Ads and non-listing stories share the feed and have no `node.listing`.
+    // They aren't candidates, so they can't be evidence of a shape change.
+    if (!listing) continue;
+    candidates += 1;
+    const facts = toFacts(listing, observedAt);
+    if (facts) out.push(facts);
+  }
+
+  // We found the feed, it held listings, and not one of them parsed. *That* is
+  // the shape change worth paging someone about. An empty `edges` array, by
+  // contrast, is simply the end of the feed.
+  if (candidates > 0 && out.length === 0) {
     throw new PayloadShapeError(
-      "No marketplace_feed_stories.edges found in payload",
+      `marketplace_feed_stories carried ${candidates} listings but none parsed`,
       "graphql",
     );
   }
 
-  const out: UnhashedListing[] = [];
-  for (const edge of edges) {
-    const listing = (edge as { node?: { listing?: RawListing } })?.node?.listing;
-    if (!listing) continue;
-    const facts = toFacts(listing, observedAt);
-    if (facts) out.push(facts);
-  }
   return out;
 }
 

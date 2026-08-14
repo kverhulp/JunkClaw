@@ -26,6 +26,11 @@ export default defineContentScript({
   runAt: "document_idle",
 
   main() {
+    // Isolated-world liveness marker. An attribute, not a global, because the
+    // page cannot see this world's variables — and being able to ask "did the
+    // overlay inject?" from the page is what makes this debuggable at all.
+    document.documentElement.setAttribute("data-junkclaw", "alive");
+
     window.addEventListener("message", (event) => {
       if (event.source !== window) return;
       if (event.origin !== window.location.origin) return;

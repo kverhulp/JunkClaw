@@ -76,8 +76,49 @@ describe("parseListings", () => {
     }
   });
 
-  it("throws on an unrecognised shape so parse-sentinel has something to act on", () => {
-    expect(() => parseListings({ data: { viewer: {} } })).toThrow(PayloadShapeError);
+  // The alarm has to mean something. Facebook fires dozens of unrelated
+  // GraphQL calls per page and we see every one of them, so "no feed in this
+  // payload" must be silent or the signal drowns.
+  it("stays silent on a payload that simply isn't a listing feed", () => {
+    expect(parseListings({ data: { viewer: {} } })).toEqual([]);
+    expect(parseListings({ hello: "world" })).toEqual([]);
+  });
+
+  // Observed live 2026-08-14: Facebook emits this alongside the real feed.
+  it("stays silent on the debug_info twin that carries no edges", () => {
+    const twin = {
+      data: { viewer: { marketplace_feed_stories: { debug_info: {}, buy_location: {} } } },
+    };
+    expect(parseListings(twin)).toEqual([]);
+  });
+
+  it("stays silent on an empty feed, which is just the end of the results", () => {
+    const empty = { data: { viewer: { marketplace_feed_stories: { edges: [] } } } };
+    expect(parseListings(empty)).toEqual([]);
+  });
+
+  // Ads share the feed and have no node.listing, so they are not evidence.
+  it("stays silent on a feed of nothing but ads", () => {
+    const ads = {
+      data: { viewer: { marketplace_feed_stories: { edges: [{ node: {} }, { node: {} }] } } },
+    };
+    expect(parseListings(ads)).toEqual([]);
+  });
+
+  it("throws when real listings are present but none parse — the actual regression", () => {
+    const broken = {
+      data: {
+        viewer: {
+          marketplace_feed_stories: {
+            edges: [
+              { node: { listing: { id: "1", renamed_price_field: "900" } } },
+              { node: { listing: { id: "2", renamed_price_field: "800" } } },
+            ],
+          },
+        },
+      },
+    };
+    expect(() => parseListings(broken)).toThrow(PayloadShapeError);
   });
 });
 

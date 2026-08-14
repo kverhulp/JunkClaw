@@ -1,5 +1,6 @@
-import { isPagePayloadMessage, type RuntimeMessage } from "@/lib/protocol";
-import { mountBadge } from "@/lib/overlay";
+import { isPagePayloadMessage, type RuntimeMessage, type ScoresMessage } from "@/lib/protocol";
+import { mountBadge, type BadgeState } from "@/lib/overlay";
+import { findCards } from "@/lib/cards";
 import { PayloadShapeError, attachUrlHashes, parseListings } from "@/lib/parse";
 
 /**
@@ -46,33 +47,50 @@ export default defineContentScript({
       }
     });
 
-    paintPlaceholders();
+    // Scores arrive asynchronously — a listing the server has never seen has to
+    // be ingested before it can be scored, so first paint is "…" and the real
+    // number lands a beat later.
+    browser.runtime.onMessage.addListener((message: ScoresMessage) => {
+      if (message.kind !== "scores") return;
+      for (const analysis of message.analyses) {
+        badgeStates.set(analysis.externalId, toBadgeState(analysis));
+      }
+      paint();
+    });
+
+    paint();
+    watchForNewCards();
   },
 });
+
+/** What we know about each listing on screen, keyed by the id its card carries. */
+const badgeStates = new Map<string, BadgeState>();
+
+function toBadgeState(analysis: ScoresMessage["analyses"][number]): BadgeState {
+  // "insufficient" is a real answer, not a missing one — PEI is thin enough that
+  // this will be the common case, and it must never render as $0.
+  if (analysis.comps.confidence === "insufficient") return { kind: "insufficient" };
+  return {
+    kind: "scored",
+    deltaCents: analysis.priceDeltaCents,
+    daysOnMarket: analysis.daysOnMarket,
+  };
+}
+
+function paint(): void {
+  for (const { externalId, card } of findCards()) {
+    mountBadge(card, badgeStates.get(externalId) ?? { kind: "pending" });
+  }
+}
+
+function watchForNewCards(): void {
+  // The results grid virtualises, so cards arrive continuously as you scroll.
+  const observer = new MutationObserver(() => paint());
+  observer.observe(document.body, { childList: true, subtree: true });
+}
 
 function send(message: RuntimeMessage): void {
   void browser.runtime.sendMessage(message).catch(() => {
     // The worker sleeps; a dropped message is not worth surfacing to the user.
   });
-}
-
-/**
- * Skeleton behaviour: put a badge on every card so "does it load and inject"
- * is verifiable in Chrome today, before any parsing exists.
- *
- * TODO(M0): replace with a badge per identified listing, keyed by urlHash, and
- * driven by /api/score responses ("…" for pending, filled on refetch).
- */
-function paintPlaceholders(): void {
-  const paint = () => {
-    for (const card of document.querySelectorAll<HTMLElement>('[data-junkclaw-card], a[href*="/marketplace/item/"]')) {
-      mountBadge(card, { kind: "pending" });
-    }
-  };
-
-  paint();
-
-  // The results grid virtualises as you scroll, so cards arrive continuously.
-  const observer = new MutationObserver(() => paint());
-  observer.observe(document.body, { childList: true, subtree: true });
 }

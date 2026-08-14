@@ -31,10 +31,10 @@ and means a bad answer can't be blamed on a model.
 | 3 | **Device token auth** | `apps/web/lib/auth.ts`, `packages/db` | A token in the options page authenticates ingest, bound to a `user` row. Forward-compatible with M1's magic-link — the schema is already multi-user, so this adds a credential, not a different model |
 | 4 | **Corpus persistence** | `ingest-listing.persist`, `/api/ingest`, `packages/db/migrations` | Listings land in Postgres, idempotent on `(source, external_id)`; `first_seen` from Marketplace's `creation_time`; a `listing_snapshots` row on every price change |
 | 5 | **Extraction (regex only)** | `ingest-listing.extract`, `listing-extractor.fastPathExtract` | Title → make/model/year/trim; mileage from `rawSubtitle`. Measure and record the hit rate — it decides whether M1 needs the model fallback at all |
-| 6 | **Dedup (deterministic only)** | `ingest-listing.dedup`, `packages/core/dedup.ts` | Blocking + similarity wired; ambiguous pairs recorded but **not** adjudicated (that's an agent, and agents are M1) |
-| 7 | **Corpus query tools** | `packages/agents/src/tools` | `searchCorpus`, `getListingHistory`, `getListingFacts` read real rows |
-| 8 | **Median-of-comps number** | `/api/score`, `packages/core/comps.ts` | Dollar delta from same make/model/year within radius; `"insufficient"` when under 3 comps |
-| 9 | **Badge matching** *(needs a browser session)* | `overlay.content.ts` | Each grid card shows its own delta, keyed by `urlHash`. Requires learning how a payload `id` maps to its DOM card **without CSS selectors** — cannot be done from a fixture |
+| 6 | **Dedup (deterministic only)** *(partial)* | `ingest-listing.dedup`, `packages/core/dedup.ts` | Upsert on `(source, external_id)` collapses the common case; cross-listing blocking + similarity still to wire |
+| ✅ 7 | **Corpus queries** | `packages/db/comps.ts` | `compFetcher`, `getListingHistory`, `getEnrichedListing` — 21 integration tests against real Postgres |
+| ✅ 8 | **Median-of-comps number** | `/api/score`, `packages/core/comps.ts` | Widening ladder + dollar delta, verified end to end on real rows; `"insufficient"` under 3 comps |
+| ✅ 9 | **Badge matching** | `overlay.content.ts`, `lib/cards.ts` | Verified live 2026-08-14: all 24 payload ids appear in the DOM as `/marketplace/item/{id}` hrefs, and that anchor *is* the card. Matched on the permalink, not a class name |
 | 10 | **Answer the gate question** | `docs/` | Written up with numbers: comp coverage by segment, how often we hit `"insufficient"`, whether the deltas look sane against listings you know |
 
 **Deliberately deferred out of M0:** `parseFromDom` (write it after we've seen a

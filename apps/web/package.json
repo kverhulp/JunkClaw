@@ -1,0 +1,27 @@
+{
+  "name": "@junkclaw/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@junkclaw/agents": "workspace:*",
+    "@junkclaw/core": "workspace:*",
+    "@junkclaw/db": "workspace:*",
+    "@junkclaw/schema": "workspace:*",
+    "better-auth": "^1.6.28",
+    "next": "^16.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}

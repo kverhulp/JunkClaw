@@ -119,6 +119,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@junkclaw/core':
+        specifier: workspace:*
+        version: link:../core
       '@junkclaw/schema':
         specifier: workspace:*
         version: link:../schema

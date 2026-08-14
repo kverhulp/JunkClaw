@@ -1,6 +1,5 @@
 import { Agent } from "@mastra/core/agent";
 import { VehicleSchema } from "@junkclaw/schema";
-import type { Vehicle } from "@junkclaw/schema";
 import { EXTRACTION_MODEL } from "../model";
 
 /**
@@ -35,35 +34,12 @@ Do not evaluate the deal, the price, or the seller. That is not your job.`,
 
 export const ExtractorOutputSchema = VehicleSchema;
 
-/** Titles that look like "2018 Toyota Corolla LE" — the common case, no model needed. */
-const TITLE_PATTERN = /^\s*(\d{4})\s+([A-Za-z][A-Za-z-]*)\s+([A-Za-z0-9][\w-]*)\s*(.*)$/;
-
 /**
- * The regex fast path. Returns null when the title doesn't match cleanly, which
- * is the signal to fall back to the agent.
- *
- * Deliberately conservative: it only claims make/model/year/trim, and leaves
- * everything the title can't state (mileage, VIN, drivetrain) to the caller or
- * the agent.
+ * The deterministic fast path lives in @junkclaw/core — it is regex, not
+ * judgement, and M0 runs it with no model behind it at all. Re-exported here so
+ * the agent and its fallback read as one unit.
  */
-export function fastPathExtract(title: string): Partial<Vehicle> | null {
-  const match = TITLE_PATTERN.exec(title);
-  if (!match) return null;
-
-  const [, yearRaw, make, model, rest] = match;
-  const year = Number(yearRaw);
-  const currentYear = new Date().getUTCFullYear();
-  if (!Number.isInteger(year) || year < 1900 || year > currentYear + 1) return null;
-  if (!make || !model) return null;
-
-  const trim = rest?.trim();
-  return {
-    make,
-    model,
-    year,
-    trim: trim && trim.length > 0 && trim.length <= 24 ? trim : null,
-  };
-}
+export { extractVehicle } from "@junkclaw/core";
 
 /**
  * TODO(M0): wire the fallback —

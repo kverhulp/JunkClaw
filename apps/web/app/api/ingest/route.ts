@@ -1,7 +1,8 @@
-import type { NextRequest } from "next/server";
-import { IngestRequestSchema } from "@junkclaw/schema";
+import { NextResponse, type NextRequest } from "next/server";
+import { IngestRequestSchema, type IngestResponse } from "@junkclaw/schema";
+import { mastra } from "@junkclaw/agents";
 import { requireUser } from "@/lib/auth";
-import { handleError, notImplemented, parseBody } from "@/lib/respond";
+import { handleError, parseBody } from "@/lib/respond";
 
 /**
  * POST /api/ingest — browsing is ingestion.
@@ -21,10 +22,29 @@ export async function POST(request: NextRequest) {
     const parsed = await parseBody(request, IngestRequestSchema);
     if (!parsed.ok) return parsed.response;
 
-    // TODO(M0): run ingestListingWorkflow per listing. Batched, idempotent on
-    // (source, externalId): first_seen set once, last_seen bumped every time, a
-    // listing_snapshots row appended when the price moved.
-    return notImplemented("Listing persistence", "M0");
+    const workflow = mastra().getWorkflow("ingestListingWorkflow");
+    const listingIds: Record<string, string> = {};
+    let accepted = 0;
+
+    // Sequential on purpose: a scroll burst is at most 200 listings and they
+    // contend for the same rows. Parallel upserts of the same listing seen
+    // twice in one batch would race for no gain.
+    for (const facts of parsed.data.listings) {
+      const run = await workflow.createRun();
+      const result = await run.start({ inputData: { facts } });
+
+      if (result.status !== "success") continue;
+      const { listingId } = result.result;
+      // A null id means the title wasn't a parseable vehicle — a parts listing
+      // or a boat. Ordinary, and not an error worth failing the batch over.
+      if (listingId === null) continue;
+
+      listingIds[facts.urlHash] = listingId;
+      accepted += 1;
+    }
+
+    const body: IngestResponse = { accepted, listingIds };
+    return NextResponse.json(body);
   } catch (error) {
     return handleError(error);
   }

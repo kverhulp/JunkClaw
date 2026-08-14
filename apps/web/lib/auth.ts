@@ -1,16 +1,16 @@
 import type { NextRequest } from "next/server";
+import { db, touchToken, verifyExtensionToken } from "@junkclaw/db";
 
 /**
  * Auth boundary for the API routes.
  *
- * The extension holds a bearer token issued by the web app's "connect extension"
- * page. No Facebook OAuth anywhere: it gives us `public_profile` and `email` and
- * nothing we need, and requires a Meta app review we would not pass.
+ * M0 authenticates the extension with a bearer token the user pastes into the
+ * options page, bound to a `user` row. This is not a smaller auth model than
+ * M1's — the schema is multi-user either way — it is one credential type, and
+ * better-auth's magic link and Google sign-in add the others on top.
  *
- * TODO(M1): wire better-auth (magic link + Google) with the Drizzle adapter over
- * @junkclaw/db's user/session/account/verification tables, and issue extension
- * tokens from it. The shape below is what the routes consume, so swapping the
- * implementation in doesn't touch them.
+ * No Facebook OAuth anywhere: it grants `public_profile` and `email` and
+ * nothing we need, and requires a Meta app review we would not pass.
  */
 
 export interface AuthedUser {
@@ -29,5 +29,13 @@ export async function requireUser(request: NextRequest): Promise<AuthedUser> {
   if (!header?.startsWith("Bearer ")) {
     throw new UnauthorizedError("Missing bearer token");
   }
-  throw new Error("requireUser: not implemented — M1, needs better-auth wiring");
+
+  const token = header.slice("Bearer ".length).trim();
+  const owner = await verifyExtensionToken(db(), token);
+  if (!owner) throw new UnauthorizedError("Invalid or revoked token");
+
+  // Recorded out of band: a failed bookkeeping write must not fail ingest.
+  void touchToken(db(), owner.tokenId).catch(() => {});
+
+  return { id: owner.userId };
 }

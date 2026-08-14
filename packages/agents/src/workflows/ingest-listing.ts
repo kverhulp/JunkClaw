@@ -1,7 +1,8 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import { EnrichedListingSchema, ListingFactsSchema } from "@junkclaw/schema";
-import { normalizeVehicle } from "@junkclaw/core";
+import { extractVehicle, normalizeVehicle } from "@junkclaw/core";
+import { db, upsertListing } from "@junkclaw/db";
 
 /**
  * `ingest-listing` — extract -> normalize -> dedup -> persist -> snapshot.
@@ -18,36 +19,57 @@ import { normalizeVehicle } from "@junkclaw/core";
  * agent calls rather than "an agent that ingests".
  */
 
+/**
+ * Title -> vehicle.
+ *
+ * M0 runs the deterministic path only, per the build plan's "no AI" rule: a
+ * title the regex can't parse is skipped rather than sent to a model. That keeps
+ * the gate cheap and means a disappointing corpus can't be blamed on extraction
+ * quality. The measured skip rate is what decides whether M1 needs the
+ * `listing-extractor` agent at all.
+ */
+/** Skips are expected: the vehicles grid contains parts, trailers, and boats. */
+const ExtractionOutcome = z.enum(["exact", "partial", "skipped"]);
+
 const ExtractStep = createStep({
   id: "extract",
   inputSchema: z.object({ facts: ListingFactsSchema }),
   outputSchema: z.object({
-    listing: EnrichedListingSchema,
-    usedFastPath: z.boolean(),
+    listing: EnrichedListingSchema.nullable(),
+    extraction: ExtractionOutcome,
   }),
-  execute: async () => {
-    // fastPathExtract(facts.rawTitle) first — "1998 Chevrolet 2500 HD Regular
-    // Cab" needs no model. listingExtractor only on a miss. Track the hit rate:
-    // it is what keeps ingest cheap as browsing scales.
-    //
-    // Mileage comes from facts.rawSubtitle ("310K km", "222K miles"), which
-    // parseSubtitleMileageKm in the extension already normalises to km — but
-    // re-derive here rather than trusting a client-side number.
-    throw new Error("ingest.extract: not implemented — M0");
+  execute: async ({ inputData }) => {
+    const result = extractVehicle(inputData.facts.rawTitle, inputData.facts.rawSubtitle);
+    if (result === null) {
+      // Not a vehicle ("Flat bed for truck"), or a title we can't read. Both are
+      // ordinary and neither is an error.
+      return { listing: null, extraction: "skipped" as const };
+    }
+
+    return {
+      listing: { ...inputData.facts, vehicle: result.vehicle },
+      extraction: result.confidence,
+    };
   },
 });
 
 const NormalizeStep = createStep({
   id: "normalize",
   inputSchema: z.object({
-    listing: EnrichedListingSchema,
-    usedFastPath: z.boolean(),
+    listing: EnrichedListingSchema.nullable(),
+    extraction: ExtractionOutcome,
   }),
-  outputSchema: z.object({ listing: EnrichedListingSchema }),
+  outputSchema: z.object({
+    listing: EnrichedListingSchema.nullable(),
+    extraction: ExtractionOutcome,
+  }),
   execute: async ({ inputData }) => {
+    if (inputData.listing === null) return inputData;
+
     // Deterministic: canonicalises make/model so the comp corpus doesn't
     // fragment across "chevy" / "Chevy" / "CHEVROLET".
     return {
+      ...inputData,
       listing: {
         ...inputData.listing,
         vehicle: normalizeVehicle(inputData.listing.vehicle),
@@ -58,39 +80,52 @@ const NormalizeStep = createStep({
 
 const DedupStep = createStep({
   id: "dedup",
-  inputSchema: z.object({ listing: EnrichedListingSchema }),
-  outputSchema: z.object({
-    listing: EnrichedListingSchema,
-    canonicalListingId: z.string().nullable(),
+  inputSchema: z.object({
+    listing: EnrichedListingSchema.nullable(),
+    extraction: ExtractionOutcome,
   }),
-  execute: async () => {
-    // Deterministic blocking + similarity settles the confident majority;
-    // only the ambiguous band reaches dedupAdjudicator.
-    throw new Error("ingest.dedup: not implemented — M0");
+  outputSchema: z.object({
+    listing: EnrichedListingSchema.nullable(),
+    extraction: ExtractionOutcome,
+  }),
+  execute: async ({ inputData }) => {
+    // TODO(M0): deterministic blocking + similarity over the corpus. Ambiguous
+    // pairs are RECORDED, not adjudicated — the adjudicator is an agent and
+    // agents are M1. Upsert on (source, external_id) already collapses the
+    // common case (the same listing seen twice), so the corpus is usable
+    // before cross-listing dedup exists.
+    return inputData;
   },
 });
 
 const PersistStep = createStep({
   id: "persist",
   inputSchema: z.object({
-    listing: EnrichedListingSchema,
-    canonicalListingId: z.string().nullable(),
+    listing: EnrichedListingSchema.nullable(),
+    extraction: ExtractionOutcome,
   }),
   outputSchema: z.object({
-    listingId: z.string(),
+    /** Null when the title wasn't a parseable vehicle — ordinary, not an error. */
+    listingId: z.string().nullable(),
     /** False when we only bumped last_seen / appended a price snapshot. */
     isNew: z.boolean(),
+    extraction: ExtractionOutcome,
   }),
-  execute: async () => {
-    // Upsert on (source, external_id): first_seen comes from Marketplace's own
-    // creation_time so days-on-market is right from the first sighting, not
-    // from when we happened to see it. Bump last_seen every time, and append a
-    // listing_snapshots row when the price moved.
-    //
-    // previousPriceCents (the strikethrough) seeds price history for a listing
-    // we've never seen before — but run it through isPlausiblePriceDrop first;
-    // sellers type things like "was CA$123,456" on a CA$1,199 car.
-    throw new Error("ingest.persist: not implemented — M0");
+  execute: async ({ inputData }) => {
+    if (inputData.listing === null) {
+      return { listingId: null, isNew: false, extraction: inputData.extraction };
+    }
+
+    // What to write is decided by planListingWrite in @junkclaw/core (tested
+    // without a database); upsertListing only executes it. first_seen comes
+    // from Marketplace's creation_time, so days-on-market is right from the
+    // first sighting rather than from when we happened to look.
+    const result = await upsertListing(db(), inputData.listing);
+    return {
+      listingId: result.listingId,
+      isNew: result.isNew,
+      extraction: inputData.extraction,
+    };
   },
 });
 
@@ -98,8 +133,9 @@ export const ingestListingWorkflow = createWorkflow({
   id: "ingest-listing",
   inputSchema: z.object({ facts: ListingFactsSchema }),
   outputSchema: z.object({
-    listingId: z.string(),
+    listingId: z.string().nullable(),
     isNew: z.boolean(),
+    extraction: ExtractionOutcome,
   }),
 })
   .then(ExtractStep)

@@ -9,7 +9,6 @@ import {
   parseCreationTime,
   parseListings,
   parseLocation,
-  parseSubtitleMileageKm,
   stripPii,
 } from "./parse";
 
@@ -103,29 +102,6 @@ describe("parseAmountCents — never amount_with_offset_in_currency", () => {
     const priced = fixture.data.viewer.marketplace_feed_stories.edges[0]!.node.listing.listing_price;
     expect(parseAmountCents(priced.amount)).toBe(123_400);
     expect(parseAmountCents(priced.amount_with_offset_in_currency)).not.toBe(123_400);
-  });
-});
-
-describe("parseSubtitleMileageKm", () => {
-  it.each([
-    ["310K km", 310_000],
-    ["250K km", 250_000],
-    ["1.2K km", 1_200],
-    ["300 km", 300],
-    ["40K km", 40_000],
-  ])("parses %s", (input, expected) => {
-    expect(parseSubtitleMileageKm(input)).toBe(expected);
-  });
-
-  // A corpus mixing units would rate a 222,000-mile truck as equivalent to a
-  // 222,000-km one — a 61% error on the single strongest condition signal.
-  it("converts miles to km", () => {
-    expect(parseSubtitleMileageKm("222K miles")).toBe(357_274);
-  });
-
-  it("returns null for an absent or unparseable subtitle", () => {
-    expect(parseSubtitleMileageKm(null)).toBeNull();
-    expect(parseSubtitleMileageKm("Just listed")).toBeNull();
   });
 });
 

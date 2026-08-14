@@ -21,7 +21,7 @@ through `npx --yes pnpm@10`. Install it properly if you get tired of the prefix.
 
 - **Install:** `npx --yes pnpm@10 install`
 - **Everything green (what CI runs):** `npx --yes pnpm@10 verify`
-  Baseline: **5 guards, 0 lint errors, 6 packages typechecking, 34 tests.** Report
+  Baseline: **5 guards, 0 lint errors, 6 packages typechecking, 95 tests.** Report
   the counts after your change.
 - **Guards only** (fast, run before pushing): `npx --yes pnpm@10 guards`
 - **Extension:** `cd apps/extension && npx --yes pnpm@10 build` → loads from

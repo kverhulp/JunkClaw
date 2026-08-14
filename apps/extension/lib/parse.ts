@@ -187,27 +187,6 @@ export function parseAmountCents(amount: unknown): number | null {
   return whole * 100 + fraction;
 }
 
-/**
- * Marketplace's subtitle carries mileage in several shapes, all observed live:
- * "310K km", "1.2K km", "300 km", "222K miles", or absent entirely.
- *
- * Miles are converted to km — a comp corpus mixing both units would compare
- * a 222,000-mile truck against a 222,000-km one and call them equivalent.
- */
-export function parseSubtitleMileageKm(subtitle: string | null): number | null {
-  if (subtitle === null) return null;
-
-  const match = /^\s*([\d.]+)\s*(K)?\s*(km|miles?|mi)\b/i.exec(subtitle);
-  if (!match) return null;
-
-  const value = Number(match[1]);
-  if (!Number.isFinite(value)) return null;
-
-  const scaled = match[2] ? value * 1000 : value;
-  const isMiles = /^mi/i.test(match[3] ?? "");
-  return Math.round(isMiles ? scaled * 1.609344 : scaled);
-}
-
 /** unix seconds -> Date. This is what gives us days-on-market on first sight. */
 export function parseCreationTime(value: unknown): Date | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;

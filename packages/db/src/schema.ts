@@ -64,6 +64,33 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Extension credentials.
+ *
+ * M0 authenticates the extension with a token the user pastes into the options
+ * page, bound to a `user` row. This is not a different auth model from M1's
+ * magic link — the schema is multi-user either way — it is one credential type,
+ * and better-auth adds the others on top.
+ *
+ * Only the SHA-256 of the token is stored. A leaked database should not hand
+ * anyone a working credential.
+ */
+export const extensionTokens = pgTable(
+  "extension_tokens",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    label: text("label").notNull().default("Extension"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [index("extension_tokens_user_idx").on(table.userId)],
+);
+
 /* ------------------------------------------------------------------ *
  * The corpus. This is M0 — everything else waits on it.
  *

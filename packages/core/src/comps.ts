@@ -14,42 +14,9 @@ import { median, percentile } from "./valuation";
 export const MIN_COMPS = 3;
 export const CONFIDENT_COMPS = 8;
 
-/**
- * Prices outside this band are not offers.
- *
- * Sellers game search ranking with placeholder prices: the first live run turned
- * up a 2015 Challenger at $1,234,567 and a 2017 Charger at $1.00 sitting in
- * otherwise ordinary buckets. Ten of 106 listings were outside these bounds.
- * A median survives a couple of them; a mean does not, and neither survives a
- * thin bucket where they are a third of the sample.
- *
- * Excluded here at comp time rather than flagged at ingest on purpose: "what did
- * sellers actually ask" is the historical record we want kept intact, and these
- * thresholds will move as the corpus teaches us the real floor and ceiling.
- * Filtering at query time keeps that revisable; a flag written at ingest freezes
- * today's guess into the data.
- */
-export const MIN_PLAUSIBLE_PRICE_CENTS = 30_000; // $300
-export const MAX_PLAUSIBLE_PRICE_CENTS = 15_000_000; // $150,000
-
 export interface CompCandidate {
   listingId: string;
   priceCents: number;
-}
-
-export function isPlausiblePrice(priceCents: number): boolean {
-  return priceCents >= MIN_PLAUSIBLE_PRICE_CENTS && priceCents <= MAX_PLAUSIBLE_PRICE_CENTS;
-}
-
-/**
- * Drop bait and placeholder prices before the statistics see them.
- *
- * Call this on the candidate list, not on the subject listing: a real car
- * genuinely priced at $200 should still be *scored*, it just should not set the
- * benchmark other cars are measured against.
- */
-export function excludeImplausiblePrices(candidates: CompCandidate[]): CompCandidate[] {
-  return candidates.filter((candidate) => isPlausiblePrice(candidate.priceCents));
 }
 
 export function confidenceFor(sampleSize: number): CompConfidence {
@@ -91,6 +58,66 @@ export function buildCompSet(
     confidence,
     wideningNote,
   };
+}
+
+
+/**
+ * Bait and placeholder prices, rejected relative to the bucket they sit in.
+ *
+ * Sellers game search ranking with placeholder prices: a 2015 Challenger at
+ * $1,234,567 and a 2017 Charger at $1.00, both sitting in otherwise ordinary
+ * buckets. Ten of 106 listings in the first live run were junk of this kind.
+ *
+ * An absolute band ($300–$150,000) was the first attempt and was wrong in both
+ * directions: too tight for a bucket of $200 beaters, too loose for one where
+ * every real example is $60,000. The threshold has to come from the data, not
+ * from someone picking numbers.
+ *
+ * Median absolute deviation is the right tool because it is exactly what
+ * survives contamination — the statistic we are protecting *is* the median, and
+ * MAD does not move when a third of the sample is nonsense. A standard
+ * deviation would be dragged out by the $1.2M listing until it stopped
+ * excluding it.
+ *
+ * Applied to CANDIDATES, never the subject: a real car genuinely priced at $200
+ * should still be scored, it just should not set the benchmark others are
+ * measured against.
+ */
+
+/** Deviations from the median beyond which a price is treated as not an offer. */
+export const OUTLIER_MAD_THRESHOLD = 5;
+
+/**
+ * Below this many candidates there is nothing to be robust against — with three
+ * prices, any one of them could be "the outlier" and dropping it is a coin flip.
+ * The comp set is already low-confidence at that size.
+ */
+export const MIN_CANDIDATES_FOR_OUTLIER_REJECTION = 5;
+
+export function medianAbsoluteDeviation(values: number[]): number {
+  if (values.length === 0) return 0;
+  const centre = median(values);
+  return median(values.map((v) => Math.abs(v - centre)));
+}
+
+export function rejectPriceOutliers(candidates: CompCandidate[]): CompCandidate[] {
+  if (candidates.length < MIN_CANDIDATES_FOR_OUTLIER_REJECTION) return candidates;
+
+  const prices = candidates.map((c) => c.priceCents);
+  const centre = median(prices);
+  const mad = medianAbsoluteDeviation(prices);
+
+  // Every price identical: MAD is zero and any deviation is infinite, so fall
+  // back to a ratio against the median rather than rejecting the whole bucket.
+  if (mad === 0) {
+    return candidates.filter(
+      (c) => c.priceCents >= centre / 4 && c.priceCents <= centre * 4,
+    );
+  }
+
+  return candidates.filter(
+    (c) => Math.abs(c.priceCents - centre) / mad <= OUTLIER_MAD_THRESHOLD,
+  );
 }
 
 /**
@@ -145,7 +172,9 @@ export async function walkWideningLadder(
   let widest: { candidates: CompCandidate[]; rung: WideningRung } | null = null;
 
   for (const rung of ladder) {
-    const candidates = await fetch(subject, rung);
+    // Cleaned before the count is taken, so a bucket that only clears MIN_COMPS
+    // because of two bait listings is correctly reported as insufficient.
+    const candidates = rejectPriceOutliers(await fetch(subject, rung));
     widest = { candidates, rung };
 
     if (confidenceFor(candidates.length) !== "insufficient") {

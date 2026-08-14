@@ -1,0 +1,203 @@
+{
+  "_comment": "Captured from facebook.com/marketplace/category/vehicles (Charlottetown PE, logged out) on 2026-08-14. Market facts only — marketplace_listing_seller was null on every logged-out listing, and photo/video fields are dropped. The Relay envelope below is abbreviated: the real payload nests these edges under require[0][3][0].__bbox.require[0][3][1].__bbox, which is bundler scaffolding we deliberately do not depend on.",
+  "data": {
+    "viewer": {
+      "marketplace_feed_stories": {
+        "edges": [
+          {
+            "cursor": "c0",
+            "node": {
+              "listing": {
+                "id": "1057017393589564",
+                "marketplace_listing_title": "1998 Chevrolet 2500 HD Regular Cab",
+                "custom_title": "1998 Chevrolet 2500 hd regular cab",
+                "listing_price": {
+                  "formatted_amount": "CA$1,234",
+                  "amount_with_offset_in_currency": "88307",
+                  "amount": "1234.00"
+                },
+                "strikethrough_price": null,
+                "creation_time": 1786147722,
+                "location": {
+                  "reverse_geocode": {
+                    "city": "Queens",
+                    "state": "PE",
+                    "city_page": { "display_name": "Charlottetown, Prince Edward Island" }
+                  }
+                },
+                "custom_sub_titles_with_rendering_flags": [{ "subtitle": "310K km" }],
+                "marketplace_listing_category_id": "807311116002614",
+                "is_sold": false,
+                "is_live": true,
+                "is_pending": false,
+                "is_hidden": false,
+                "delivery_types": ["IN_PERSON"]
+              }
+            }
+          },
+          {
+            "cursor": "c1",
+            "node": {
+              "listing": {
+                "id": "1235909731909779",
+                "marketplace_listing_title": "2014 Sierra",
+                "custom_title": null,
+                "listing_price": {
+                  "formatted_amount": "CA$3,000",
+                  "amount_with_offset_in_currency": "214686",
+                  "amount": "3000.00"
+                },
+                "strikethrough_price": null,
+                "creation_time": 1784113391,
+                "location": {
+                  "reverse_geocode": {
+                    "city": "Kings",
+                    "state": "PE",
+                    "city_page": { "display_name": "Montague, Prince Edward Island" }
+                  }
+                },
+                "custom_sub_titles_with_rendering_flags": null,
+                "marketplace_listing_category_id": "807311116002614",
+                "is_sold": false,
+                "is_live": true,
+                "is_pending": false,
+                "is_hidden": false,
+                "delivery_types": ["IN_PERSON"]
+              }
+            }
+          },
+          {
+            "cursor": "c2",
+            "node": {
+              "listing": {
+                "id": "1922786009088942",
+                "marketplace_listing_title": "2008 Subaru Impreza",
+                "custom_title": "2008 Subaru impreza",
+                "listing_price": {
+                  "formatted_amount": "CA$1,199",
+                  "amount_with_offset_in_currency": "85803",
+                  "amount": "1199.00"
+                },
+                "strikethrough_price": {
+                  "formatted_amount": "CA$123,456",
+                  "amount": "123456.00"
+                },
+                "creation_time": 1784517159,
+                "location": {
+                  "reverse_geocode": {
+                    "city": "Queens",
+                    "state": "PE",
+                    "city_page": { "display_name": "Cavendish, Prince Edward Island" }
+                  }
+                },
+                "custom_sub_titles_with_rendering_flags": [{ "subtitle": "250K km" }],
+                "marketplace_listing_category_id": "807311116002614",
+                "is_sold": false,
+                "is_live": true,
+                "is_pending": false,
+                "is_hidden": false,
+                "delivery_types": ["IN_PERSON"]
+              }
+            }
+          },
+          {
+            "cursor": "c3",
+            "node": {
+              "listing": {
+                "id": "3312744558903112",
+                "marketplace_listing_title": "2009 Dodge Ram 1500 Club Cab",
+                "custom_title": "2009 Dodge ram 1500 club cab",
+                "listing_price": {
+                  "formatted_amount": "CA$7,000",
+                  "amount_with_offset_in_currency": "500920",
+                  "amount": "7000.00"
+                },
+                "strikethrough_price": {
+                  "formatted_amount": "CA$7,500",
+                  "amount": "7500.00"
+                },
+                "creation_time": 1785600000,
+                "location": {
+                  "reverse_geocode": {
+                    "city": "Kings",
+                    "state": "PE",
+                    "city_page": { "display_name": "Three Rivers, Prince Edward Island" }
+                  }
+                },
+                "custom_sub_titles_with_rendering_flags": [{ "subtitle": "222K miles" }],
+                "marketplace_listing_category_id": "807311116002614",
+                "is_sold": false,
+                "is_live": true,
+                "is_pending": false,
+                "is_hidden": false,
+                "delivery_types": ["IN_PERSON"]
+              }
+            }
+          },
+          {
+            "cursor": "c4",
+            "node": {
+              "listing": {
+                "id": "8801143299887654",
+                "marketplace_listing_title": "2009 chev Malibu parts",
+                "custom_title": "2009 chev Malibu parts",
+                "listing_price": {
+                  "formatted_amount": "CA$5",
+                  "amount_with_offset_in_currency": "358",
+                  "amount": "5.00"
+                },
+                "strikethrough_price": null,
+                "creation_time": 1785900000,
+                "location": {
+                  "reverse_geocode": {
+                    "city": "Kings",
+                    "state": "PE",
+                    "city_page": { "display_name": "Three Rivers, Prince Edward Island" }
+                  }
+                },
+                "custom_sub_titles_with_rendering_flags": null,
+                "marketplace_listing_category_id": "807311116002614",
+                "is_sold": false,
+                "is_live": true,
+                "is_pending": false,
+                "is_hidden": false,
+                "delivery_types": ["IN_PERSON"]
+              }
+            }
+          },
+          {
+            "cursor": "c5",
+            "node": {
+              "listing": {
+                "id": "5540988112233445",
+                "marketplace_listing_title": "2020 Honda Grom",
+                "custom_title": "2020 Honda grom",
+                "listing_price": {
+                  "formatted_amount": "CA$3,400",
+                  "amount_with_offset_in_currency": "243304",
+                  "amount": "3400.50"
+                },
+                "strikethrough_price": null,
+                "creation_time": 1786400000,
+                "location": {
+                  "reverse_geocode": {
+                    "city": "Queens",
+                    "state": "PE",
+                    "city_page": { "display_name": "Stratford, Prince Edward Island" }
+                  }
+                },
+                "custom_sub_titles_with_rendering_flags": [{ "subtitle": "1.2K km" }],
+                "marketplace_listing_category_id": "807311116002614",
+                "is_sold": false,
+                "is_live": true,
+                "is_pending": false,
+                "is_hidden": false,
+                "delivery_types": ["IN_PERSON"]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

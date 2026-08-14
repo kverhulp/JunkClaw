@@ -34,8 +34,29 @@ export const ListingFactsSchema = z.strictObject({
   /** SHA-256 of the canonical listing URL. Lets us dedupe without storing the URL. */
   urlHash: z.string().length(64),
 
-  vehicle: VehicleSchema,
+  /**
+   * The listing's own title, unparsed — "1998 Chevrolet 2500 HD Regular Cab".
+   *
+   * Deliberately NOT a parsed vehicle. The extension only ever sees a string;
+   * turning it into make/model/year is the `extract` step of the ingest
+   * workflow, server-side, where the fast path and the model fallback both live.
+   * A DTO demanding a parsed vehicle would be asking the client for something it
+   * cannot know.
+   */
+  rawTitle: z.string().min(1).max(500),
+  /** Marketplace's subtitle line, which carries mileage: "310K km", "222K miles". */
+  rawSubtitle: z.string().max(200).nullable(),
+
   priceCents: z.number().int().nonnegative(),
+  /**
+   * The struck-through "was" price when Marketplace shows one.
+   *
+   * Seller-entered and unvalidated — observed in the wild: a CA$1,199 car
+   * claiming it dropped from CA$123,456. Stored as observed on purpose; the
+   * plausibility judgement is server-side (see isPlausiblePriceDrop in
+   * @junkclaw/core) so it can be corrected without shipping a new extension.
+   */
+  previousPriceCents: z.number().int().nonnegative().nullable(),
   currency: z.literal("CAD"),
   location: CoarseLocationSchema,
 
@@ -59,6 +80,20 @@ export const ListingFactsSchema = z.strictObject({
   rawPayload: z.record(z.string(), z.unknown()),
 });
 export type ListingFacts = z.infer<typeof ListingFactsSchema>;
+
+/**
+ * A listing after the server has done its job: the wire facts plus the vehicle
+ * the `extract` step derived from `rawTitle`.
+ *
+ * The difference between this and ListingFacts is exactly the work the server
+ * adds, which is why they're separate types rather than one type with optional
+ * fields — dedup, comps, and scoring all require a vehicle and should not
+ * compile against something that might not have one.
+ */
+export const EnrichedListingSchema = ListingFactsSchema.extend({
+  vehicle: VehicleSchema,
+});
+export type EnrichedListing = z.infer<typeof EnrichedListingSchema>;
 
 /** The background worker batches; browsing a results grid is one request, not 200. */
 export const IngestRequestSchema = z.strictObject({

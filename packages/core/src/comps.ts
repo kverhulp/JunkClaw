@@ -1,4 +1,4 @@
-import type { CompConfidence, CompSet, ListingFacts } from "@junkclaw/schema";
+import type { CompConfidence, CompSet, EnrichedListing } from "@junkclaw/schema";
 import { median, percentile } from "./valuation";
 
 /**
@@ -82,7 +82,7 @@ export const WIDENING_LADDER: WideningRung[] = [
 ];
 
 export function selectComps(
-  _subject: ListingFacts,
+  _subject: EnrichedListing,
   _rung: WideningRung,
 ): Promise<CompCandidate[]> {
   throw new Error("selectComps: not implemented — M1, needs the corpus query layer");

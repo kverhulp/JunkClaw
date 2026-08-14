@@ -1,57 +1,66 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
-import { ListingFactsSchema } from "@junkclaw/schema";
+import { EnrichedListingSchema, ListingFactsSchema } from "@junkclaw/schema";
 import { normalizeVehicle } from "@junkclaw/core";
 
 /**
- * `ingest-listing` — normalize -> extract -> dedup -> persist -> snapshot.
+ * `ingest-listing` — extract -> normalize -> dedup -> persist -> snapshot.
  *
  * This is M0, and M0 is the gate: within two weeks the corpus tells us whether
  * credible valuations are possible in a market as thin as PEI. Agents and
  * negotiation flows are worth nothing if the comp data can't support a number.
  *
- * Plain TypeScript inside each step; Zod at every boundary; the two agent calls
- * are narrow and explicit rather than the workflow being "an agent that ingests".
+ * Note the order. Extraction comes FIRST because the extension sends a title
+ * string, not a vehicle — normalising make/model can only happen once something
+ * has derived them. Everything downstream of extract works on EnrichedListing.
+ *
+ * Plain TypeScript inside each step; Zod at every boundary; exactly two narrow
+ * agent calls rather than "an agent that ingests".
  */
-
-const NormalizeStep = createStep({
-  id: "normalize",
-  inputSchema: z.object({ facts: ListingFactsSchema }),
-  outputSchema: z.object({ facts: ListingFactsSchema }),
-  execute: async ({ inputData }) => {
-    // Deterministic: canonicalises make/model so the comp corpus doesn't
-    // fragment across "chevy" / "Chevy" / "CHEVROLET".
-    return {
-      facts: {
-        ...inputData.facts,
-        vehicle: normalizeVehicle(inputData.facts.vehicle),
-      },
-    };
-  },
-});
 
 const ExtractStep = createStep({
   id: "extract",
   inputSchema: z.object({ facts: ListingFactsSchema }),
   outputSchema: z.object({
-    facts: ListingFactsSchema,
+    listing: EnrichedListingSchema,
     usedFastPath: z.boolean(),
   }),
   execute: async () => {
-    // Fast path first (fastPathExtract), agent only on miss. Track the hit rate:
+    // fastPathExtract(facts.rawTitle) first — "1998 Chevrolet 2500 HD Regular
+    // Cab" needs no model. listingExtractor only on a miss. Track the hit rate:
     // it is what keeps ingest cheap as browsing scales.
+    //
+    // Mileage comes from facts.rawSubtitle ("310K km", "222K miles"), which
+    // parseSubtitleMileageKm in the extension already normalises to km — but
+    // re-derive here rather than trusting a client-side number.
     throw new Error("ingest.extract: not implemented — M0");
+  },
+});
+
+const NormalizeStep = createStep({
+  id: "normalize",
+  inputSchema: z.object({
+    listing: EnrichedListingSchema,
+    usedFastPath: z.boolean(),
+  }),
+  outputSchema: z.object({ listing: EnrichedListingSchema }),
+  execute: async ({ inputData }) => {
+    // Deterministic: canonicalises make/model so the comp corpus doesn't
+    // fragment across "chevy" / "Chevy" / "CHEVROLET".
+    return {
+      listing: {
+        ...inputData.listing,
+        vehicle: normalizeVehicle(inputData.listing.vehicle),
+      },
+    };
   },
 });
 
 const DedupStep = createStep({
   id: "dedup",
-  inputSchema: z.object({
-    facts: ListingFactsSchema,
-    usedFastPath: z.boolean(),
-  }),
+  inputSchema: z.object({ listing: EnrichedListingSchema }),
   outputSchema: z.object({
-    facts: ListingFactsSchema,
+    listing: EnrichedListingSchema,
     canonicalListingId: z.string().nullable(),
   }),
   execute: async () => {
@@ -64,7 +73,7 @@ const DedupStep = createStep({
 const PersistStep = createStep({
   id: "persist",
   inputSchema: z.object({
-    facts: ListingFactsSchema,
+    listing: EnrichedListingSchema,
     canonicalListingId: z.string().nullable(),
   }),
   outputSchema: z.object({
@@ -73,9 +82,14 @@ const PersistStep = createStep({
     isNew: z.boolean(),
   }),
   execute: async () => {
-    // Upsert on (source, external_id): set first_seen once, bump last_seen every
-    // time, and append a listing_snapshots row when the price moved. The price
-    // history is the whole reason days-on-market and drop-count exist.
+    // Upsert on (source, external_id): first_seen comes from Marketplace's own
+    // creation_time so days-on-market is right from the first sighting, not
+    // from when we happened to see it. Bump last_seen every time, and append a
+    // listing_snapshots row when the price moved.
+    //
+    // previousPriceCents (the strikethrough) seeds price history for a listing
+    // we've never seen before — but run it through isPlausiblePriceDrop first;
+    // sellers type things like "was CA$123,456" on a CA$1,199 car.
     throw new Error("ingest.persist: not implemented — M0");
   },
 });
@@ -88,8 +102,8 @@ export const ingestListingWorkflow = createWorkflow({
     isNew: z.boolean(),
   }),
 })
-  .then(NormalizeStep)
   .then(ExtractStep)
+  .then(NormalizeStep)
   .then(DedupStep)
   .then(PersistStep)
   .commit();

@@ -1,4 +1,4 @@
-import type { CompSet, ListingFacts, SavedCriteria } from "@junkclaw/schema";
+import type { CompSet, EnrichedListing, SavedCriteria } from "@junkclaw/schema";
 
 /**
  * Two scores, shown together and never averaged.
@@ -32,7 +32,7 @@ export function dealScore(_inputs: DealInputs): number | null {
 }
 
 export interface FitInputs {
-  facts: ListingFacts;
+  facts: EnrichedListing;
   criteria: SavedCriteria;
   distanceKm: number;
 }
@@ -43,7 +43,7 @@ export function fitScore(_inputs: FitInputs): number | null {
 }
 
 /** Hard constraints. Failing one mutes the listing when the user asked for that. */
-export function qualifies(facts: ListingFacts, criteria: SavedCriteria): boolean {
+export function qualifies(facts: EnrichedListing, criteria: SavedCriteria): boolean {
   if (facts.priceCents > criteria.budgetMaxCents) return false;
   if (facts.priceCents < criteria.budgetMinCents) return false;
   if (criteria.yearMin !== null && facts.vehicle.year < criteria.yearMin) return false;

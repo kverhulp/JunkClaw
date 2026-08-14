@@ -1,18 +1,22 @@
-import type { ListingFacts } from "@junkclaw/schema";
+import type { CoarseLocation, ListingFacts } from "@junkclaw/schema";
 
 /**
- * Turns a Marketplace GraphQL payload into listing facts.
+ * Turns a Marketplace payload into listing facts.
  *
- * Two rules this module exists to hold:
+ * Written against real payloads captured from the PEI vehicles grid on
+ * 2026-08-14, not from a guess at Facebook's schema. The shape:
  *
- * 1. Parse the payload, never the DOM. Facebook's class names are obfuscated and
- *    rotate; selector scraping is weekly firefighting. The DOM fallback below is
- *    a stopgap for when a shape shifts, not the primary path.
+ *   data.viewer.marketplace_feed_stories.edges[].node.listing
  *
- * 2. Drop seller identity here, at the earliest possible point. Names, profile
- *    links, photos, and message bodies exist in these payloads and must not
- *    survive this function. The ingest DTO in @junkclaw/schema won't accept them
- *    anyway — but relying on the far end to reject PII means it travelled first.
+ * Two rules this module holds:
+ *
+ * 1. Parse the payload, never the DOM. Facebook's class names are obfuscated
+ *    and rotate; selector scraping is weekly firefighting.
+ *
+ * 2. Drop seller identity here, at the earliest point. `marketplace_listing_seller`,
+ *    `primary_listing_photo`, and `listing_video` are read past and never
+ *    copied — the ingest DTO wouldn't accept them, but relying on the far end
+ *    to reject PII means it travelled first.
  */
 
 export class PayloadShapeError extends Error {
@@ -25,26 +29,246 @@ export class PayloadShapeError extends Error {
   }
 }
 
+/** Marketplace's category id for vehicles, observed on every car in the grid. */
+export const VEHICLES_CATEGORY_ID = "807311116002614";
+
+interface RawMoney {
+  amount?: unknown;
+  formatted_amount?: unknown;
+  /**
+   * NOT cents. Observed at a consistent 0.7156 ratio to `amount` across every
+   * listing — it is the price converted to another currency (USD). Reading it
+   * as minor units would under-price every car by ~28%, silently and uniformly.
+   * We never touch it.
+   */
+  amount_with_offset_in_currency?: unknown;
+}
+
+interface RawListing {
+  id?: unknown;
+  marketplace_listing_title?: unknown;
+  custom_title?: unknown;
+  listing_price?: RawMoney;
+  strikethrough_price?: RawMoney | null;
+  creation_time?: unknown;
+  location?: { reverse_geocode?: { city?: unknown; state?: unknown; city_page?: { display_name?: unknown } } };
+  custom_sub_titles_with_rendering_flags?: Array<{ subtitle?: unknown }>;
+  marketplace_listing_category_id?: unknown;
+  is_sold?: unknown;
+  is_live?: unknown;
+}
+
 /**
- * TODO(M0): implement against real captured payloads.
+ * Finds the listing edges by searching for the `marketplace_feed_stories` key
+ * rather than walking the literal path.
  *
- * Deliberately not written from memory of Facebook's schema — the field paths
- * have to come from payloads observed in the browser, and guessing them would
- * produce code that looks right and silently parses nothing. Capture first
- * (the popup's parse-health counter is there to tell us when we're wrong),
- * then map.
+ * The full path runs through `require[0][3][0].__bbox.require[0][3][1].__bbox`
+ * — bundler-generated scaffolding that changes without warning and has nothing
+ * to do with the data. Searching for the one key we actually care about
+ * survives that churn; hardcoding the path would make us brittle to a build
+ * detail rather than to the schema.
  */
-export function parseListings(_payload: unknown): ListingFacts[] {
-  throw new PayloadShapeError(
-    "parseListings: not implemented — M0, needs captured payloads to map against",
-    "graphql",
-  );
+export function findListingEdges(payload: unknown): unknown[] | null {
+  let found: unknown[] | null = null;
+
+  const walk = (node: unknown, depth: number): void => {
+    if (found || depth > 60 || node === null || typeof node !== "object") return;
+
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, depth + 1);
+      return;
+    }
+
+    const record = node as Record<string, unknown>;
+    const stories = record["marketplace_feed_stories"] as { edges?: unknown } | undefined;
+    if (stories && Array.isArray(stories.edges)) {
+      found = stories.edges;
+      return;
+    }
+
+    for (const key of Object.keys(record)) walk(record[key], depth + 1);
+  };
+
+  walk(payload, 0);
+  return found;
+}
+
+/**
+ * Parses a Marketplace payload into listing facts.
+ *
+ * Listings that aren't usable (missing price, not a vehicle, sold) are skipped
+ * rather than thrown on — a grid legitimately contains boats, trailers, and
+ * "Flat bed for truck". Only a payload whose *shape* we don't recognise raises,
+ * because that is the signal `parse-sentinel` exists to act on.
+ */
+export function parseListings(payload: unknown, observedAt: Date = new Date()): ListingFacts[] {
+  const edges = findListingEdges(payload);
+  if (edges === null) {
+    throw new PayloadShapeError(
+      "No marketplace_feed_stories.edges found in payload",
+      "graphql",
+    );
+  }
+
+  const out: ListingFacts[] = [];
+  for (const edge of edges) {
+    const listing = (edge as { node?: { listing?: RawListing } })?.node?.listing;
+    if (!listing) continue;
+    const facts = toFacts(listing, observedAt);
+    if (facts) out.push(facts);
+  }
+  return out;
+}
+
+function toFacts(listing: RawListing, observedAt: Date): ListingFacts | null {
+  const externalId = asString(listing.id);
+  const priceCents = parseAmountCents(listing.listing_price?.amount);
+  const title = asString(listing.marketplace_listing_title) ?? asString(listing.custom_title);
+
+  if (!externalId || priceCents === null || !title) return null;
+
+  // A sold listing still counts as a comp — it's an asking price that existed —
+  // but it should not be badged as available. Sold handling is a persist-step
+  // concern; here we only skip listings that were never live.
+  if (listing.is_live === false && listing.is_sold !== true) return null;
+
+  const location = parseLocation(listing.location);
+  if (!location) return null;
+
+  const rawSubtitle = asString(listing.custom_sub_titles_with_rendering_flags?.[0]?.subtitle);
+  const firstSeen = parseCreationTime(listing.creation_time) ?? observedAt;
+
+  return {
+    source: "marketplace",
+    externalId,
+    urlHash: "", // filled by the caller, which can await crypto.subtle
+    rawTitle: title,
+    rawSubtitle,
+    priceCents,
+    previousPriceCents: parseAmountCents(listing.strikethrough_price?.amount),
+    currency: "CAD",
+    location,
+    // Marketplace's grid payload carries no dealer flag; dealer-posing-as-private
+    // is inferred later by risk-analyst from the description.
+    isDealer: false,
+    description: "",
+    firstSeenAt: firstSeen.toISOString(),
+    lastSeenAt: observedAt.toISOString(),
+    rawPayload: stripPii(listing),
+  };
+}
+
+/**
+ * `amount` is a decimal string: "1234.00", "1199.00".
+ *
+ * Parsed via string manipulation rather than `Math.round(parseFloat(x) * 100)`
+ * so a value like "1199.10" can't land a cent off through binary float.
+ */
+export function parseAmountCents(amount: unknown): number | null {
+  const text = asString(amount);
+  if (text === null) return null;
+
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(text.trim());
+  if (!match) return null;
+
+  const whole = Number(match[1]);
+  const fraction = Number((match[2] ?? "0").padEnd(2, "0"));
+  if (!Number.isFinite(whole) || !Number.isFinite(fraction)) return null;
+  return whole * 100 + fraction;
+}
+
+/**
+ * Marketplace's subtitle carries mileage in several shapes, all observed live:
+ * "310K km", "1.2K km", "300 km", "222K miles", or absent entirely.
+ *
+ * Miles are converted to km — a comp corpus mixing both units would compare
+ * a 222,000-mile truck against a 222,000-km one and call them equivalent.
+ */
+export function parseSubtitleMileageKm(subtitle: string | null): number | null {
+  if (subtitle === null) return null;
+
+  const match = /^\s*([\d.]+)\s*(K)?\s*(km|miles?|mi)\b/i.exec(subtitle);
+  if (!match) return null;
+
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) return null;
+
+  const scaled = match[2] ? value * 1000 : value;
+  const isMiles = /^mi/i.test(match[3] ?? "");
+  return Math.round(isMiles ? scaled * 1.609344 : scaled);
+}
+
+/** unix seconds -> Date. This is what gives us days-on-market on first sight. */
+export function parseCreationTime(value: unknown): Date | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  // Sanity: Marketplace launched in 2016; anything before 2010 is a unit error.
+  if (value < 1_262_304_000 || value > 4_102_444_800) return null;
+  return new Date(value * 1000);
+}
+
+/**
+ * `reverse_geocode.city` is the county ("Queens"), while `city_page.display_name`
+ * is the town the seller actually picked ("Cavendish, Prince Edward Island").
+ * Prefer the town — a radius computed from county centroids would be useless on
+ * an island this size.
+ */
+export function parseLocation(
+  location: RawListing["location"],
+): CoarseLocation | null {
+  const geo = location?.reverse_geocode;
+  if (!geo) return null;
+
+  const region = asString(geo.state);
+  const display = asString(geo.city_page?.display_name);
+  const city = display?.split(",")[0]?.trim() ?? asString(geo.city);
+
+  if (!city || !region) return null;
+  return { city, region, country: "CA" };
+}
+
+/**
+ * Keeps the raw payload for re-parsing history and for parse-sentinel to diff,
+ * minus anything identifying a person. Whitelist, not blocklist: a field
+ * Facebook adds tomorrow is excluded by default rather than included by
+ * oversight.
+ */
+const RAW_PAYLOAD_KEYS = [
+  "id",
+  "marketplace_listing_title",
+  "custom_title",
+  "listing_price",
+  "strikethrough_price",
+  "creation_time",
+  "location",
+  "custom_sub_titles_with_rendering_flags",
+  "marketplace_listing_category_id",
+  "is_sold",
+  "is_live",
+  "is_pending",
+  "is_hidden",
+  "delivery_types",
+] as const;
+
+export function stripPii(listing: RawListing): Record<string, unknown> {
+  const source = listing as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const key of RAW_PAYLOAD_KEYS) {
+    if (key in source) out[key] = source[key];
+  }
+  return out;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 /**
  * Last-resort DOM read, for when a payload shape shifts and we'd otherwise show
- * the user nothing. Intentionally shallow: it recovers the price and title only,
- * enough to keep a badge alive while `parse-sentinel` proposes the real fix.
+ * the user nothing.
+ *
+ * TODO(M0): implement once we've seen a shape change in the wild. Writing it
+ * now means guessing which selectors survive, which is the same mistake as
+ * guessing the payload shape was.
  */
 export function parseFromDom(_card: HTMLElement): Partial<ListingFacts> | null {
   throw new PayloadShapeError("parseFromDom: not implemented — M0", "dom-fallback");
@@ -58,6 +282,11 @@ export async function hashUrl(url: string): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+/** The grid gives us ids, not URLs; this is the canonical form we hash. */
+export function listingUrl(externalId: string): string {
+  return `https://www.facebook.com/marketplace/item/${externalId}`;
 }
 
 /** Strips tracking params so the same listing hashes the same across referrers. */

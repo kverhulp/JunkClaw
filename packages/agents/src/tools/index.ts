@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { AnalysisSchema, CompSetSchema, ListingFactsSchema, NegotiationLimitsSchema } from "@junkclaw/schema";
+import { AnalysisSchema, CompSetSchema, EnrichedListingSchema, NegotiationLimitsSchema } from "@junkclaw/schema";
 
 /**
  * Tools the agents call. Each is a thin door into `@junkclaw/core` or the
@@ -17,7 +17,7 @@ export const getListingFacts = createTool({
     "Fetch the stored market facts for a listing: vehicle, price, coarse location, " +
     "dealer flag, description, and first/last seen timestamps.",
   inputSchema: z.object({ listingId: z.string() }),
-  outputSchema: ListingFactsSchema,
+  outputSchema: EnrichedListingSchema,
   execute: async () => {
     throw new Error("get-listing-facts: not implemented — M0, needs the corpus query layer");
   },

@@ -1,4 +1,4 @@
-import type { ListingFacts } from "@junkclaw/schema";
+import type { EnrichedListing } from "@junkclaw/schema";
 import { vehicleKey } from "./normalize";
 
 /**
@@ -15,7 +15,7 @@ import { vehicleKey } from "./normalize";
 export type DedupVerdict = "same" | "different" | "ambiguous";
 
 /** Candidates only ever compared within a block. Cheap, and keeps it O(n) per block. */
-export function blockingKey(facts: ListingFacts): string {
+export function blockingKey(facts: EnrichedListing): string {
   return vehicleKey(facts.vehicle);
 }
 
@@ -26,7 +26,7 @@ export const DIFFERENT_THRESHOLD = 0.55;
  * Decides without a model where the evidence is decisive, and says `ambiguous`
  * where it isn't. Callers escalate `ambiguous` to the adjudicator agent.
  */
-export function classifyPair(a: ListingFacts, b: ListingFacts): DedupVerdict {
+export function classifyPair(a: EnrichedListing, b: EnrichedListing): DedupVerdict {
   // A matching VIN is conclusive and needs no similarity math.
   if (a.vehicle.vin && b.vehicle.vin) {
     return a.vehicle.vin === b.vehicle.vin ? "same" : "different";
@@ -46,7 +46,7 @@ export function classifyPair(a: ListingFacts, b: ListingFacts): DedupVerdict {
  * considered. Tune against labelled relist pairs from the corpus rather than
  * guessing — this is the single highest-leverage thing to calibrate.
  */
-export function similarity(a: ListingFacts, b: ListingFacts): number {
+export function similarity(a: EnrichedListing, b: EnrichedListing): number {
   let score = 0;
   let weight = 0;
 

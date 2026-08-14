@@ -65,6 +65,30 @@ export function priceDropCount(history: PricePoint[]): number {
 }
 
 /**
+ * Is a struck-through "was" price believable as a real price drop?
+ *
+ * Marketplace's `strikethrough_price` is seller-entered and unvalidated. In a
+ * single 24-listing sample from the PEI vehicles grid, six drops were plausible
+ * (1.1x–1.7x) and one claimed a CA$1,199 car had been reduced from CA$123,456 —
+ * a 103x "discount". Headlining that as a $122,000 saving would destroy trust in
+ * every other number we show, so an implausible drop is discarded rather than
+ * displayed.
+ *
+ * Bounds are deliberately generous at the low end (a $50 drop on a $20,000 truck
+ * is real) and strict at the high end.
+ */
+export const MAX_PLAUSIBLE_DROP_RATIO = 3;
+
+export function isPlausiblePriceDrop(
+  currentCents: number,
+  previousCents: number,
+): boolean {
+  if (previousCents <= currentCents) return false; // not a drop
+  if (currentCents <= 0) return false;
+  return previousCents / currentCents <= MAX_PLAUSIBLE_DROP_RATIO;
+}
+
+/**
  * Mileage-adjusted comparison price.
  *
  * TODO(M1): the per-km depreciation constant is a placeholder. Fit it against

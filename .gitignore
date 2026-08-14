@@ -40,3 +40,6 @@ coverage/
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# local dev database (PGlite socket server)
+.pgdata/

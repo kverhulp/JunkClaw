@@ -12,7 +12,8 @@
     "generate": "drizzle-kit generate",
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
-    "token:issue": "tsx scripts/issue-token.ts"
+    "token:issue": "tsx scripts/issue-token.ts",
+    "dev:db": "tsx scripts/dev-db.ts"
   },
   "dependencies": {
     "@junkclaw/core": "workspace:*",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.5",
+    "@electric-sql/pglite-socket": "^0.2.8",
     "@types/node": "^22.10.0",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.19.2"

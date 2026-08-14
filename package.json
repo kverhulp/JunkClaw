@@ -18,7 +18,8 @@
     "verify": "./scripts/guards.sh && eslint . && pnpm -r typecheck && vitest run",
     "db:generate": "pnpm --filter @junkclaw/db generate",
     "db:migrate": "pnpm --filter @junkclaw/db migrate",
-    "token:issue": "pnpm --filter @junkclaw/db token:issue"
+    "token:issue": "pnpm --filter @junkclaw/db token:issue",
+    "dev:db": "pnpm --filter @junkclaw/db dev:db"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -25,6 +25,12 @@ updates:
       # https://github.com/typescript-eslint/typescript-eslint/issues/10940
       - dependency-name: typescript
         versions: [">=7.0.0"]
+      # @types/node must track the Node we actually run, not the newest Node
+      # that exists — types for APIs the runtime lacks compile fine and fail in
+      # production. Bump this in the same commit as NODE_VERSION in ci.yml and
+      # engines in package.json, never on its own.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /

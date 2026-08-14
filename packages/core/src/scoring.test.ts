@@ -16,6 +16,7 @@ function listing(overrides: Partial<EnrichedListing["vehicle"]> = {}, priceCents
     location: { city: "Charlottetown", region: "PE", country: "CA" },
     isDealer: false,
     description: "",
+    photoUrls: [],
     firstSeenAt: "2026-08-01T00:00:00.000Z",
     lastSeenAt: "2026-08-14T00:00:00.000Z",
     rawPayload: {},

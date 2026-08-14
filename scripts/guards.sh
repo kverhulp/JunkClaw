@@ -23,13 +23,15 @@ pass() {
 }
 
 # ---------------------------------------------------------------------------
-# 1. The PII boundary must stay strict.
+# 1. The PII boundary must stay strict, and seller identity must stay out.
 #
 # ListingFactsSchema is the only shape the extension may send us. As a
-# strictObject, an added seller name or photo URL is a parse failure. Downgrade
-# it to z.object() and unknown keys are silently accepted — which is exactly the
-# PIPEDA problem the design exists to prevent, arriving without a single test
-# turning red at the boundary itself.
+# strictObject, an added seller name or profile link is a parse failure.
+# Downgrade it to z.object() and unknown keys are silently accepted — the PIPEDA
+# problem the design exists to prevent, arriving without a single test turning red.
+#
+# Vehicle PHOTOS are allowed (decision 2026-08-14) — the dashboard displays
+# them. Photos of a car are not personal information; the seller is.
 # ---------------------------------------------------------------------------
 if grep -q 'export const ListingFactsSchema = z.strictObject(' packages/schema/src/listing.ts; then
   pass "ingest DTO is a strictObject (PII boundary holds)"
@@ -37,6 +39,16 @@ else
   fail "ListingFactsSchema is no longer a z.strictObject" \
     "packages/schema/src/listing.ts must use z.strictObject so seller PII can't" \
     "ride along in an unknown key. See docs/JunkClaw-Build-Plan.md → What crosses the network."
+fi
+
+seller_fields=$(grep -nE '^\s*(sellerName|sellerId|sellerProfileUrl|sellerProfile|profileUrl)\s*:' \
+  packages/schema/src/listing.ts 2>/dev/null || true)
+if [ -n "$seller_fields" ]; then
+  fail "the ingest DTO names a seller-identity field" \
+    "Vehicle photos are allowed; the seller as a person is not." \
+    "$seller_fields"
+else
+  pass "ingest DTO carries no seller-identity field"
 fi
 
 # ---------------------------------------------------------------------------

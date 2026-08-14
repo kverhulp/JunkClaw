@@ -1,6 +1,7 @@
-import type { RuntimeMessage, StatusResponse } from "@/lib/protocol";
+import type { ListingFacts } from "@junkclaw/schema";
+import type { RuntimeMessage, ScoresMessage, StatusResponse } from "@/lib/protocol";
 import { IngestQueue } from "@/lib/queue";
-import { postIngest } from "@/lib/api";
+import { postIngest, postScore } from "@/lib/api";
 import { apiBaseUrl, apiToken, enabled } from "@/lib/settings";
 
 /**
@@ -38,10 +39,63 @@ const queue = new IngestQueue({
     // out on the first flush after a token is pasted in.
     if (!token) throw new Error("Extension is not connected — no API token set");
 
-    await postIngest({ baseUrl, token }, { listings: batch });
+    const ingested = await postIngest({ baseUrl, token }, { listings: batch });
     stats.lastIngestAt = new Date().toISOString();
+
+    // Scoring is a separate round trip on purpose: ingest must succeed (and the
+    // corpus must grow) even when scoring is unavailable. A failure here is
+    // logged by omission — the badges simply stay at "…" — rather than sending
+    // the whole batch back to the queue for a re-ingest it doesn't need.
+    await scoreAndBroadcast({ baseUrl, token }, batch, ingested.listingIds);
   },
 });
+
+/**
+ * Turns server-side listing ids back into the externalIds the DOM cards carry,
+ * then pushes the analyses to whichever tabs are showing Marketplace.
+ */
+async function scoreAndBroadcast(
+  config: { baseUrl: string; token: string },
+  batch: ListingFacts[],
+  listingIds: Record<string, string>,
+): Promise<void> {
+  const externalIdByListingId = new Map<string, string>();
+  for (const facts of batch) {
+    const listingId = listingIds[facts.urlHash];
+    if (listingId) externalIdByListingId.set(listingId, facts.externalId);
+  }
+  if (externalIdByListingId.size === 0) return;
+
+  try {
+    const scored = await postScore(config, {
+      listingIds: [...externalIdByListingId.keys()],
+    });
+
+    const analyses = scored.analyses
+      .map((analysis) => {
+        const externalId = externalIdByListingId.get(analysis.listingId);
+        return externalId ? { ...analysis, externalId } : null;
+      })
+      .filter((a): a is ScoresMessage["analyses"][number] => a !== null);
+
+    if (analyses.length > 0) await broadcast({ kind: "scores", analyses });
+  } catch {
+    // Badges stay at "…" and refresh on the next burst. Not worth surfacing.
+  }
+}
+
+async function broadcast(message: ScoresMessage): Promise<void> {
+  const tabs = await browser.tabs.query({ url: "https://www.facebook.com/marketplace/*" });
+  await Promise.all(
+    tabs.map((tab) =>
+      tab.id === undefined
+        ? Promise.resolve()
+        : browser.tabs.sendMessage(tab.id, message).catch(() => {
+            // Tab navigated away mid-flight. Nothing to do.
+          }),
+    ),
+  );
+}
 
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener((message: RuntimeMessage, _sender, sendResponse) => {

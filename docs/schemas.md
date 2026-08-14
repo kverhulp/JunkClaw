@@ -88,3 +88,34 @@ Agent Guidance
 When you encounter a country, currency, or service field, look for the corresponding schema in packages/schema before defining the field.
 
 The schema is the contract. Do not weaken it by replacing it with string, duplicating its values, or implementing a second validation mechanism.
+
+---
+
+## Which listing schema is live
+
+Two listing shapes exist in `packages/schema` and they are not interchangeable:
+
+- **`listing.ts` → `ListingFactsSchema`** is the wire contract. It is what the
+  extension sends, what `/api/ingest` validates, and what the corpus stores. It
+  is a `strictObject` because that is what keeps seller PII from riding along in
+  an unknown key — see the build plan, *What crosses the network*. Do not relax
+  it, and do not replace it without replacing its tests.
+- **`vehicle-listing.ts` → `vehicleListingSchema`** is a proposed multi-source
+  shape (price ranges, a `service` field, several listing ids for one car). It is
+  a sketch for when Kijiji and AutoTrader are collected too, and nothing consumes
+  it yet.
+
+`docs/schemas/vehicle-listing.schema.json` is the JSON Schema rendering of the
+second one, kept for sharing the shape outside TypeScript.
+
+## Applying these rules to the live contract
+
+The policy above is now enforced in `ListingFactsSchema` rather than only stated:
+
+- `location.country` uses `countryCodeAlpha2Schema`, not `z.string().length(2)`.
+  A length check accepts `"XX"`.
+- `currency` uses `SupportedCurrencySchema`, drawn from the canonical ISO 4217
+  list and narrowed to what the comp math actually supports.
+- `service.ts` was empty, which is why `vehicle-listing.ts` did not compile. It
+  now defines the services we collect from, and a test fails if it drifts out of
+  step with `SourceSchema`.

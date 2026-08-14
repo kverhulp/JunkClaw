@@ -49,6 +49,7 @@ export async function upsertListing(
       country: incoming.location.country,
       isDealer: incoming.isDealer,
       description: incoming.description,
+      photoUrls: incoming.photoUrls,
       firstSeenAt: new Date(incoming.firstSeenAt),
       lastSeenAt: new Date(incoming.lastSeenAt),
       rawPayload: incoming.rawPayload,

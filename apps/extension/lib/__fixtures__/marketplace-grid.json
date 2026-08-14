@@ -1,5 +1,5 @@
 {
-  "_comment": "Captured from facebook.com/marketplace/category/vehicles (Charlottetown PE, logged out) on 2026-08-14. Market facts only — marketplace_listing_seller was null on every logged-out listing, and photo/video fields are dropped. The Relay envelope below is abbreviated: the real payload nests these edges under require[0][3][0].__bbox.require[0][3][1].__bbox, which is bundler scaffolding we deliberately do not depend on.",
+  "_comment": "Captured from facebook.com/marketplace/category/vehicles (Charlottetown PE, logged out) on 2026-08-14. Market facts only \u2014 marketplace_listing_seller was null on every logged-out listing, and photo/video fields are dropped. The Relay envelope below is abbreviated: the real payload nests these edges under require[0][3][0].__bbox.require[0][3][1].__bbox, which is bundler scaffolding we deliberately do not depend on.",
   "data": {
     "viewer": {
       "marketplace_feed_stories": {
@@ -22,16 +22,29 @@
                   "reverse_geocode": {
                     "city": "Queens",
                     "state": "PE",
-                    "city_page": { "display_name": "Charlottetown, Prince Edward Island" }
+                    "city_page": {
+                      "display_name": "Charlottetown, Prince Edward Island"
+                    }
                   }
                 },
-                "custom_sub_titles_with_rendering_flags": [{ "subtitle": "310K km" }],
+                "custom_sub_titles_with_rendering_flags": [
+                  {
+                    "subtitle": "310K km"
+                  }
+                ],
                 "marketplace_listing_category_id": "807311116002614",
                 "is_sold": false,
                 "is_live": true,
                 "is_pending": false,
                 "is_hidden": false,
-                "delivery_types": ["IN_PERSON"]
+                "delivery_types": [
+                  "IN_PERSON"
+                ],
+                "primary_listing_photo": {
+                  "image": {
+                    "uri": "https://scontent.xx.fbcdn.net/v/photo0.jpg"
+                  }
+                }
               }
             }
           },
@@ -53,7 +66,9 @@
                   "reverse_geocode": {
                     "city": "Kings",
                     "state": "PE",
-                    "city_page": { "display_name": "Montague, Prince Edward Island" }
+                    "city_page": {
+                      "display_name": "Montague, Prince Edward Island"
+                    }
                   }
                 },
                 "custom_sub_titles_with_rendering_flags": null,
@@ -62,7 +77,10 @@
                 "is_live": true,
                 "is_pending": false,
                 "is_hidden": false,
-                "delivery_types": ["IN_PERSON"]
+                "delivery_types": [
+                  "IN_PERSON"
+                ],
+                "primary_listing_photo": null
               }
             }
           },
@@ -87,16 +105,29 @@
                   "reverse_geocode": {
                     "city": "Queens",
                     "state": "PE",
-                    "city_page": { "display_name": "Cavendish, Prince Edward Island" }
+                    "city_page": {
+                      "display_name": "Cavendish, Prince Edward Island"
+                    }
                   }
                 },
-                "custom_sub_titles_with_rendering_flags": [{ "subtitle": "250K km" }],
+                "custom_sub_titles_with_rendering_flags": [
+                  {
+                    "subtitle": "250K km"
+                  }
+                ],
                 "marketplace_listing_category_id": "807311116002614",
                 "is_sold": false,
                 "is_live": true,
                 "is_pending": false,
                 "is_hidden": false,
-                "delivery_types": ["IN_PERSON"]
+                "delivery_types": [
+                  "IN_PERSON"
+                ],
+                "primary_listing_photo": {
+                  "image": {
+                    "uri": "https://scontent.xx.fbcdn.net/v/photo2.jpg"
+                  }
+                }
               }
             }
           },
@@ -121,16 +152,29 @@
                   "reverse_geocode": {
                     "city": "Kings",
                     "state": "PE",
-                    "city_page": { "display_name": "Three Rivers, Prince Edward Island" }
+                    "city_page": {
+                      "display_name": "Three Rivers, Prince Edward Island"
+                    }
                   }
                 },
-                "custom_sub_titles_with_rendering_flags": [{ "subtitle": "222K miles" }],
+                "custom_sub_titles_with_rendering_flags": [
+                  {
+                    "subtitle": "222K miles"
+                  }
+                ],
                 "marketplace_listing_category_id": "807311116002614",
                 "is_sold": false,
                 "is_live": true,
                 "is_pending": false,
                 "is_hidden": false,
-                "delivery_types": ["IN_PERSON"]
+                "delivery_types": [
+                  "IN_PERSON"
+                ],
+                "primary_listing_photo": {
+                  "image": {
+                    "uri": "https://scontent.xx.fbcdn.net/v/photo3.jpg"
+                  }
+                }
               }
             }
           },
@@ -152,7 +196,9 @@
                   "reverse_geocode": {
                     "city": "Kings",
                     "state": "PE",
-                    "city_page": { "display_name": "Three Rivers, Prince Edward Island" }
+                    "city_page": {
+                      "display_name": "Three Rivers, Prince Edward Island"
+                    }
                   }
                 },
                 "custom_sub_titles_with_rendering_flags": null,
@@ -161,7 +207,14 @@
                 "is_live": true,
                 "is_pending": false,
                 "is_hidden": false,
-                "delivery_types": ["IN_PERSON"]
+                "delivery_types": [
+                  "IN_PERSON"
+                ],
+                "primary_listing_photo": {
+                  "image": {
+                    "uri": "https://scontent.xx.fbcdn.net/v/photo4.jpg"
+                  }
+                }
               }
             }
           },
@@ -183,16 +236,29 @@
                   "reverse_geocode": {
                     "city": "Queens",
                     "state": "PE",
-                    "city_page": { "display_name": "Stratford, Prince Edward Island" }
+                    "city_page": {
+                      "display_name": "Stratford, Prince Edward Island"
+                    }
                   }
                 },
-                "custom_sub_titles_with_rendering_flags": [{ "subtitle": "1.2K km" }],
+                "custom_sub_titles_with_rendering_flags": [
+                  {
+                    "subtitle": "1.2K km"
+                  }
+                ],
                 "marketplace_listing_category_id": "807311116002614",
                 "is_sold": false,
                 "is_live": true,
                 "is_pending": false,
                 "is_hidden": false,
-                "delivery_types": ["IN_PERSON"]
+                "delivery_types": [
+                  "IN_PERSON"
+                ],
+                "primary_listing_photo": {
+                  "image": {
+                    "uri": "https://scontent.xx.fbcdn.net/v/photo5.jpg"
+                  }
+                }
               }
             }
           }

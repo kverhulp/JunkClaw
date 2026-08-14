@@ -28,6 +28,8 @@ through `npx --yes pnpm@10`. Install it properly if you get tired of the prefix.
   `.output/chrome-mv3` via `chrome://extensions` → Load unpacked. Dev: `pnpm dev:ext`.
 - **Web:** `cd apps/web && npx --yes pnpm@10 build`, or `pnpm dev:web` (:3000).
 - **DB:** `pnpm db:generate` then `pnpm db:migrate` (needs `DATABASE_URL`).
+- **Extension token** (M0, until the connect-extension page exists):
+  `pnpm token:issue you@example.com` → paste into the extension's options page.
 
 ### Version traps that already bit once
 
@@ -72,6 +74,19 @@ deliberately not automated.
 M0/M1/M2 with a "done when" for each. Check there before picking up work; the
 order encodes dependencies that aren't obvious from the code.
 
+## Division of labour
+
+- **Ours: the extension (`apps/extension/`) and everything behind it** — the API
+  routes in `apps/web/app/api/`, plus `packages/{schema,core,db,agents}`.
+- **The dashboard UI in `apps/web` belongs to a coworker.** Don't build
+  `page.tsx`, layouts, styling, sign-in screens, or dashboard views there. For
+  anything they need, write it up in [`docs/handoff/`](docs/handoff/) — API
+  contract plus concrete UI items marked exists/planned — rather than
+  implementing it.
+- The extension's *own* UI (inline badge, detail panel, popup, options form) is
+  ours: it renders from a content script inside Facebook's page, and is not part
+  of that handoff.
+
 ## Hard rules
 
 - **Dependency direction is `agents → core → schema`. Never backwards.**
@@ -84,9 +99,11 @@ order encodes dependencies that aren't obvious from the code.
 - **The price ceiling is enforced in `core`, after the draft exists and before
   the composer fill — never as an instruction in a prompt.** A model that talks
   itself past a spending limit is the one failure we cannot ship.
-- **Never send seller PII off-device.** No seller names, profile links, photos,
-  or message contents reach the server. The ingest DTO in `packages/schema` omits
-  them by construction; keep it that way. This is PIPEDA, not preference.
+- **Never send seller PII off-device.** No seller names, profile links, seller
+  ids, or message contents reach the server. The ingest DTO in `packages/schema`
+  omits them by construction; keep it that way. This is PIPEDA, not preference.
+  **Vehicle photo URLs are allowed** (decision 2026-08-14) — the dashboard
+  displays them. A photo of a car is not personal information; the seller is.
 - **Never select on Facebook's CSS classes.** Parse the GraphQL/JSON payloads.
   Keep the DOM fallback, and keep the parse-failure alarm working.
 - **The overlay renders in a shadow DOM.** Facebook's stylesheet must not reach

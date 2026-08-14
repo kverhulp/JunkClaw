@@ -1,4 +1,5 @@
 import { PAGE_MESSAGE_TAG, type PagePayloadMessage } from "@/lib/protocol";
+import { parseResponseBody } from "@/lib/stream";
 
 /**
  * Runs in the PAGE world so it can see Facebook's own `fetch` and `XMLHttpRequest`.
@@ -16,7 +17,17 @@ import { PAGE_MESSAGE_TAG, type PagePayloadMessage } from "@/lib/protocol";
  * gets a personal Facebook account banned is exactly what we don't do.
  */
 export default defineContentScript({
-  matches: ["https://www.facebook.com/marketplace/*"],
+  // Vehicle surfaces only. The general Marketplace feed sells sofas, and we
+  // have nothing useful to say about a sofa.
+  matches: [
+    "https://www.facebook.com/marketplace/category/vehicles*",
+    "https://www.facebook.com/marketplace/category/cars*",
+    "https://www.facebook.com/marketplace/category/motorcycles*",
+    "https://www.facebook.com/marketplace/category/trucks*",
+    "https://www.facebook.com/marketplace/item/*",
+    "https://www.facebook.com/marketplace/*/vehicles*",
+    "https://www.facebook.com/marketplace/search*",
+  ],
   world: "MAIN",
   runAt: "document_start",
 
@@ -50,6 +61,11 @@ export default defineContentScript({
       return (originalOpen as any).call(this, method, url, ...rest);
     };
 
+    // The first page of results is server-rendered into <script type="application/json">
+    // and never crosses the network — patching fetch cannot see it. Observed
+    // live: 24 listings in the initial HTML, 0 intercepted. Read them directly.
+    forwardEmbeddedPayloads();
+
     XMLHttpRequest.prototype.send = function patchedSend(
       this: XMLHttpRequest & { __junkclawUrl?: string },
       ...args: unknown[]
@@ -58,7 +74,7 @@ export default defineContentScript({
       if (isInteresting(url)) {
         this.addEventListener("load", () => {
           try {
-            forward(url, JSON.parse(stripJsonPrefix(this.responseText)));
+            for (const payload of parseResponseBody(this.responseText)) forward(url, payload);
           } catch {
             // A body that isn't JSON is normal traffic, not a parse failure.
           }
@@ -69,6 +85,35 @@ export default defineContentScript({
     };
   },
 });
+
+/**
+ * Reads the listings Facebook server-rendered into the page.
+ *
+ * Runs at document_start, so the script tags may not exist yet — hence the
+ * retry. Cheap: it stops as soon as it finds a payload carrying listings.
+ */
+function forwardEmbeddedPayloads(attempt = 0): void {
+  const scripts = document.querySelectorAll<HTMLScriptElement>(
+    'script[type="application/json"]',
+  );
+
+  let found = false;
+  for (const script of scripts) {
+    const text = script.textContent;
+    if (!text || !text.includes("marketplace_feed_stories")) continue;
+    try {
+      forward("embedded:initial-html", JSON.parse(text));
+      found = true;
+    } catch {
+      // Not our shape.
+    }
+  }
+
+  // The document is still streaming; look again shortly.
+  if (!found && attempt < 20) {
+    setTimeout(() => forwardEmbeddedPayloads(attempt + 1), 250);
+  }
+}
 
 function requestUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;
@@ -84,21 +129,13 @@ function isInteresting(url: string): boolean {
 async function readAndForward(response: Response, url: string): Promise<void> {
   try {
     const text = await response.text();
-    forward(url, JSON.parse(stripJsonPrefix(text)));
+    for (const payload of parseResponseBody(text)) forward(url, payload);
   } catch {
     // Non-JSON responses are expected; the isolated world alarms on *parse*
     // failures of payloads we did recognise, not on every request that isn't one.
   }
 }
 
-/**
- * Facebook prefixes JSON responses with `for (;;);` as an anti-hijacking measure.
- * Stripping it is not a bypass of anything — the browser has already received
- * and rendered this payload.
- */
-function stripJsonPrefix(text: string): string {
-  return text.startsWith("for (;;);") ? text.slice("for (;;);".length) : text;
-}
 
 function forward(endpoint: string, body: unknown): void {
   const message: PagePayloadMessage = {

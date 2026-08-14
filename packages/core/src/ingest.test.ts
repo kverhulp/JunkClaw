@@ -15,6 +15,7 @@ function incoming(overrides: Partial<EnrichedListing> = {}): EnrichedListing {
     location: { city: "Charlottetown", region: "PE", country: "CA" },
     isDealer: false,
     description: "",
+    photoUrls: [],
     firstSeenAt: "2026-08-08T00:08:42.000Z",
     lastSeenAt: "2026-08-14T17:00:00.000Z",
     rawPayload: {},

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ListingFactsSchema } from "@junkclaw/schema";
 import fixture from "./__fixtures__/marketplace-grid.json";
+import { parseResponseBody } from "./stream";
 import {
   PayloadShapeError,
   canonicalizeUrl,
@@ -66,10 +67,12 @@ describe("parseListings", () => {
     expect(listings[0]!.lastSeenAt).toBe(OBSERVED_AT.toISOString());
   });
 
-  it("carries no seller, photo, or video field into the raw payload", () => {
-    const serialised = JSON.stringify(listings);
-    for (const banned of ["seller", "photo", "image", "uri", "video", "profile"]) {
-      expect(serialised.toLowerCase()).not.toContain(banned);
+  // Photos are allowed (2026-08-14); seller identity is not. These are easy to
+  // conflate, so the test names both sides explicitly.
+  it("carries no seller-identifying field", () => {
+    const serialised = JSON.stringify(listings).toLowerCase();
+    for (const banned of ["seller", "profile", "user_id", "actor"]) {
+      expect(serialised).not.toContain(banned);
     }
   });
 
@@ -132,12 +135,17 @@ describe("stripPii", () => {
       id: "1",
       marketplace_listing_title: "2018 Toyota Corolla",
       // Everything below is PII or PII-adjacent and must not survive.
-      marketplace_listing_seller: { id: "100000123", name: "Dave M." },
       primary_listing_photo: { image: { uri: "https://scontent/x.jpg" } },
+      // Seller identity and video are still dropped.
+      marketplace_listing_seller: { id: "100000123", name: "Dave M." },
       listing_video: { playable_url: "https://video/x.mp4" },
     } as never);
 
-    expect(Object.keys(stripped)).toEqual(["id", "marketplace_listing_title"]);
+    expect(Object.keys(stripped)).toEqual([
+      "id",
+      "marketplace_listing_title",
+      "primary_listing_photo",
+    ]);
   });
 });
 
@@ -164,5 +172,56 @@ describe("canonicalizeUrl", () => {
     expect(canonicalizeUrl("https://www.facebook.com/marketplace/item/123?ref=search&x=1")).toBe(
       "https://www.facebook.com/marketplace/item/123",
     );
+  });
+});
+
+describe("parseResponseBody — streamed GraphQL", () => {
+  // The bug that made the extension silently ingest nothing: Facebook streams
+  // deferred fragments as several newline-separated JSON documents in one body,
+  // so JSON.parse on the whole thing throws — and the caller swallows it.
+  it("parses a single JSON document", () => {
+    expect(parseResponseBody('{"a":1}')).toEqual([{ a: 1 }]);
+  });
+
+  it("parses a multi-document streamed body", () => {
+    const body = '{"a":1}\n{"b":2}\n{"c":3}';
+    expect(parseResponseBody(body)).toEqual([{ a: 1 }, { b: 2 }, { c: 3 }]);
+  });
+
+  it("strips the anti-hijacking prefix on every document", () => {
+    const body = 'for (;;);{"a":1}\nfor (;;);{"b":2}';
+    expect(parseResponseBody(body)).toEqual([{ a: 1 }, { b: 2 }]);
+  });
+
+  it("skips a truncated chunk rather than losing the whole body", () => {
+    const body = '{"a":1}\n{"b":2\n{"c":3}';
+    expect(parseResponseBody(body)).toEqual([{ a: 1 }, { c: 3 }]);
+  });
+
+  it("returns nothing for an empty or non-JSON body", () => {
+    expect(parseResponseBody("")).toEqual([]);
+    expect(parseResponseBody("   ")).toEqual([]);
+    expect(parseResponseBody("<!doctype html>")).toEqual([]);
+  });
+});
+
+describe("photos", () => {
+  const listings = parseListings(fixture, OBSERVED_AT);
+
+  it("collects the listing photo for the dashboard to display", () => {
+    expect(listings[0]!.photoUrls).toEqual([
+      "https://scontent.xx.fbcdn.net/v/photo0.jpg",
+    ]);
+  });
+
+  it("returns an empty array when a listing has no photo", () => {
+    expect(listings[1]!.photoUrls).toEqual([]);
+  });
+
+  it("still satisfies the ingest contract with photos present", () => {
+    for (const listing of listings) {
+      const result = ListingFactsSchema.safeParse({ ...listing, urlHash: "a".repeat(64) });
+      expect(result.success, JSON.stringify(result.error?.issues)).toBe(true);
+    }
   });
 });

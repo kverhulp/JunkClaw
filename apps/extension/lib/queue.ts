@@ -39,6 +39,14 @@ export interface FlushOutcome {
   sent: number;
   requeued: number;
   dropped: number;
+  /**
+   * Why the batch failed, if it did. The queue's own behaviour doesn't depend on
+   * this — it retries the same way regardless — but without it a bad token, a
+   * dead API, and a missing host permission are indistinguishable from the
+   * outside: all three show a growing queue and no badges. That is a bad hour to
+   * spend, and it costs one field to avoid.
+   */
+  error: string | null;
 }
 
 interface Entry {
@@ -60,6 +68,9 @@ export class IngestQueue {
 
   /** Total listings dropped after exhausting retries, for the popup's health line. */
   droppedTotal = 0;
+
+  /** Reason the most recent flush failed; cleared by the next success. */
+  lastError: string | null = null;
 
   /**
    * Queue listings and arrange for them to be sent.
@@ -103,7 +114,7 @@ export class IngestQueue {
    */
   async flush(): Promise<FlushOutcome> {
     if (this.flushing || this.entries.size === 0) {
-      return { sent: 0, requeued: 0, dropped: 0 };
+      return { sent: 0, requeued: 0, dropped: 0, error: null };
     }
     this.flushing = true;
 
@@ -112,8 +123,11 @@ export class IngestQueue {
 
     try {
       await this.deps.send(batch.map((e) => e.facts));
-      return { sent: batch.length, requeued: 0, dropped: 0 };
-    } catch {
+      this.lastError = null;
+      return { sent: batch.length, requeued: 0, dropped: 0, error: null };
+    } catch (cause) {
+      const error = cause instanceof Error ? cause.message : String(cause);
+      this.lastError = error;
       let requeued = 0;
       let dropped = 0;
       for (const entry of batch) {
@@ -130,7 +144,7 @@ export class IngestQueue {
         requeued += 1;
       }
       if (requeued > 0) this.scheduleFlush();
-      return { sent: 0, requeued, dropped };
+      return { sent: 0, requeued, dropped, error };
     } finally {
       this.flushing = false;
     }

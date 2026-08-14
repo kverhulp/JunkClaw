@@ -40,3 +40,14 @@ dd {
 a {
   font-size: 12px;
 }
+
+.error {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #fdecea;
+  color: #8a1c11;
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-word;
+}

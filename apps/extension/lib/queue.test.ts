@@ -157,7 +157,7 @@ describe("IngestQueue", () => {
 
   it("ignores a flush with nothing queued", async () => {
     const { queue } = makeHarness(succeed);
-    expect(await queue.flush()).toEqual({ sent: 0, requeued: 0, dropped: 0 });
+    expect(await queue.flush()).toEqual({ sent: 0, requeued: 0, dropped: 0, error: null });
     expect(sent).toHaveLength(0);
   });
 
@@ -172,10 +172,45 @@ describe("IngestQueue", () => {
 
     const first = queue.flush();
     const second = await queue.flush(); // while the first is still open
-    expect(second).toEqual({ sent: 0, requeued: 0, dropped: 0 });
+    expect(second).toEqual({ sent: 0, requeued: 0, dropped: 0, error: null });
 
     resolveSend?.();
     await first;
     expect(sent).toHaveLength(1);
+  });
+});
+
+describe("failure reporting", () => {
+  it("reports why a flush failed, so the popup can say more than 'queued: 47'", async () => {
+    const queue = new IngestQueue({
+      send: async () => {
+        throw new Error("Extension is not connected — no API token set");
+      },
+      schedule: () => {},
+    });
+    queue.add([listing("a")]);
+
+    const outcome = await queue.flush();
+    expect(outcome.error).toBe("Extension is not connected — no API token set");
+    expect(queue.lastError).toBe(outcome.error);
+  });
+
+  it("clears the error once a send succeeds", async () => {
+    let fail = true;
+    const queue = new IngestQueue({
+      send: async () => {
+        if (fail) throw new Error("boom");
+      },
+      schedule: () => {},
+    });
+
+    queue.add([listing("a")]);
+    await queue.flush();
+    expect(queue.lastError).toBe("boom");
+
+    fail = false;
+    queue.add([listing("b")]);
+    await queue.flush();
+    expect(queue.lastError).toBeNull();
   });
 });

@@ -61,4 +61,6 @@ export interface StatusResponse {
   queuedForIngest: number;
   parseFailuresThisSession: number;
   lastIngestAt: string | null;
+  /** Why the last ingest failed, if it did. Null once one succeeds. */
+  lastError: string | null;
 }

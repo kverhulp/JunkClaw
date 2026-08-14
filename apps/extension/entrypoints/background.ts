@@ -122,6 +122,7 @@ export default defineBackground(() => {
             queuedForIngest: queue.size,
             parseFailuresThisSession: stats.parseFailuresThisSession,
             lastIngestAt: stats.lastIngestAt,
+            lastError: queue.lastError,
           };
           sendResponse(response);
         })();

@@ -11,6 +11,7 @@ import type { StatusResponse } from "@/lib/protocol";
 const seen = document.querySelector<HTMLElement>("#seen")!;
 const queued = document.querySelector<HTMLElement>("#queued")!;
 const failures = document.querySelector<HTMLElement>("#failures")!;
+const errorLine = document.querySelector<HTMLElement>("#error")!;
 const optionsLink = document.querySelector<HTMLAnchorElement>("#options")!;
 
 optionsLink.addEventListener("click", (event) => {
@@ -27,6 +28,13 @@ void (async () => {
     seen.textContent = String(status.seenThisSession);
     queued.textContent = String(status.queuedForIngest);
     failures.textContent = String(status.parseFailuresThisSession);
+
+    // A queue that keeps growing with no badges has several possible causes and
+    // they look identical from here. Say which one it is.
+    if (status.lastError) {
+      errorLine.textContent = status.lastError;
+      errorLine.hidden = false;
+    }
   } catch {
     seen.textContent = queued.textContent = failures.textContent = "—";
   }

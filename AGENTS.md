@@ -1,0 +1,73 @@
+# AGENTS.md — JunkClaw
+
+Guidance for AI agents (Claude, Codex, etc.) working in this repo. Read this
+before starting a task.
+
+## What this is
+
+A Chrome MV3 browser extension (TypeScript) that enriches Facebook Marketplace
+vehicle listings with comparable-price scoring and drafted seller messages,
+backed by a Next.js app on Vercel that hosts the API and the Mastra agents.
+
+Read [`docs/JunkClaw-Build-Plan.md`](docs/JunkClaw-Build-Plan.md) for product
+decisions and
+[`docs/superpowers/specs/2026-08-14-junkclaw-architecture-design.md`](docs/superpowers/specs/2026-08-14-junkclaw-architecture-design.md)
+for technical ones. Both are authoritative; this file is the short version.
+
+## Architecture
+
+```
+apps/extension    WXT · MV3 · content script, background worker, options, popup
+apps/web          Next.js — dashboard, /api/{ingest,score,criteria,negotiate}, Mastra host
+packages/schema   Zod contracts, the extension↔server boundary
+packages/core     deterministic valuation: normalize, dedup, comps, scoring
+packages/agents   Mastra agents, workflows, tools, memory
+packages/db       Drizzle schema + migrations (Neon Postgres)
+```
+
+## Hard rules
+
+- **Dependency direction is `agents → core → schema`. Never backwards.**
+  `packages/core` must not import Mastra, Next, or anything from the extension.
+  The valuation math stays testable without a model and portable off Mastra.
+- **Most of this is not agentic.** Dedup, comps, price delta, days on market,
+  mileage adjustment, filtering, and scoring are deterministic TypeScript in
+  `packages/core`. An agent that returns a different valuation each run is a bug,
+  not a feature. Agents go where the input is language or judgment.
+- **The price ceiling is enforced in `core`, after the draft exists and before
+  the composer fill — never as an instruction in a prompt.** A model that talks
+  itself past a spending limit is the one failure we cannot ship.
+- **Never send seller PII off-device.** No seller names, profile links, photos,
+  or message contents reach the server. The ingest DTO in `packages/schema` omits
+  them by construction; keep it that way. This is PIPEDA, not preference.
+- **Never select on Facebook's CSS classes.** Parse the GraphQL/JSON payloads.
+  Keep the DOM fallback, and keep the parse-failure alarm working.
+- **The overlay renders in a shadow DOM.** Facebook's stylesheet must not reach
+  our UI, and ours must not reach theirs.
+- **No background polling of Marketplace.** v1 enriches pages the user is already
+  looking at. Automation is what gets the user's personal Facebook account banned.
+  Any future polling ships opt-in with explicit consent, never on by default.
+- **Say "not enough data" rather than guess.** PEI is a thin market. A confident
+  wrong number loses trust permanently. The UI says "vs. similar asking prices",
+  never "market value" — we have asking prices, not sale prices.
+
+## Conventions
+
+- **Commits:** Conventional Commits — lowercase `type: subject` (`feat:`, `fix:`,
+  `docs:`, `chore:`, `refactor:`, `test:`). One logical change per commit;
+  generated artifacts go in the *same* commit as the change that produced them.
+- **NEVER** add Claude/Anthropic attribution — no `Co-Authored-By`, no "Generated
+  with", no mention — in commits, PR bodies, or comments.
+- **Never `git push` without explicit approval.** Commit freely; push only when
+  asked, per-push.
+- **Zod at every boundary.** Extension↔server, workflow step inputs and outputs,
+  and every structured-output call.
+- **Don't hardcode a model provider.** Mastra routes across providers; the choice
+  gets made on evals against our own listings, not on vibes.
+
+## Milestone gate
+
+**M0 is the gate.** Corpus in, dumb median-of-comps number on screen, no AI.
+It answers whether credible valuations are possible in a market this thin.
+Agents and negotiation flows are worth nothing if the comp data can't support a
+number — do not build ahead of that answer without saying so out loud.

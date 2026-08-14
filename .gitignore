@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+out/
+.output/
+.wxt/
+.next/
+*.tsbuildinfo
+
+# extension packaging
+*.zip
+*.crx
+*.pem
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# test + coverage
+coverage/
+.vitest/
+
+# tooling caches
+.turbo/
+.eslintcache
+.vercel/
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

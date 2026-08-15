@@ -191,22 +191,27 @@ async function loadSheet(): Promise<void> {
  * they could have typed, which is the whole distinction: we are not browsing
  * Marketplace on anyone's behalf, we are opening one page once.
  */
-document.querySelector<HTMLButtonElement>("#apply-marketplace")!.addEventListener("click", () => {
-  void (async () => {
-    const saved = await readCriteria();
-    const dropped = unsupportedByMarketplace(saved);
+for (const [id, category] of [
+  ["#apply-cars", "cars"],
+  ["#apply-trucks", "trucks"],
+] as const) {
+  document.querySelector<HTMLButtonElement>(id)!.addEventListener("click", () => {
+    void (async () => {
+      const saved = await readCriteria();
+      const dropped = unsupportedByMarketplace(saved);
 
-    const note = document.querySelector<HTMLElement>("#apply-note")!;
-    // Named, not swallowed. A criterion that cannot survive the trip should say
-    // so at the moment it is dropped, not quietly return the wrong cars.
-    note.textContent =
-      dropped.length === 0
-        ? "Opened. Facebook is filtering; results appear here as you scroll."
-        : `Opened. Facebook cannot filter on ${dropped.join("; ")} — judged here instead, once known.`;
+      const note = document.querySelector<HTMLElement>("#apply-note")!;
+      // Named, not swallowed. A criterion that cannot survive the trip should
+      // say so at the moment it is dropped, not quietly return the wrong cars.
+      note.textContent =
+        dropped.length === 0
+          ? `Opened ${category}. Facebook is filtering; results appear here as you scroll.`
+          : `Opened ${category}. Facebook cannot filter on ${dropped.join("; ")} — judged here instead, once known.`;
 
-    await browser.tabs.create({ url: marketplaceUrl(saved) });
-  })();
-});
+      await browser.tabs.create({ url: marketplaceUrl(saved, category) });
+    })();
+  });
+}
 
 document.querySelector<HTMLButtonElement>("#sheet-save")!.addEventListener("click", () => {
   void (async () => {
@@ -379,7 +384,7 @@ function emptyState(): HTMLElement {
   el.className = "empty";
   el.textContent =
     cars().length === 0
-      ? "Open a Marketplace vehicles page and scroll. Cars you pass appear here."
+      ? "Open Facebook's Cars or Trucks feed and scroll — the cog has a button for each. AutoScout deliberately ignores the mixed Vehicles feed, which carries tractors, trailers and ATVs."
       : "Nothing on this page fits your criteria. Widen them in the cog, or switch to All.";
   return el;
 }

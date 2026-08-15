@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { EnrichedListingSchema, ListingFactsSchema } from "./listing";
+import {
+  EnrichedListingSchema,
+  IngestRequestSchema,
+  IngestResponseSchema,
+  ListingFactsSchema,
+} from "./listing";
 
 const validFacts = {
   source: "marketplace" as const,
@@ -91,5 +96,46 @@ describe("EnrichedListing — facts plus the server-derived vehicle", () => {
 
   it("requires the vehicle — enrichment is not optional downstream", () => {
     expect(EnrichedListingSchema.safeParse(validFacts).success).toBe(false);
+  });
+});
+
+/**
+ * Requests are strict; responses are not. The asymmetry is deliberate.
+ *
+ * A strict *request* is the PII boundary in force — a payload carrying a seller
+ * field must fail at the edge rather than reach the corpus. A strict *response*
+ * buys nothing and costs forward compatibility: the extension and the server
+ * ship separately, and a user reloads one when they feel like it. Adding
+ * `rejected` to the ingest response broke every loaded extension instantly:
+ *
+ *   { "code": "unrecognized_keys", "keys": ["rejected"], "message": "Invalid input" }
+ */
+describe("schema strictness is asymmetric on purpose", () => {
+  it("rejects an unknown key on an ingest request", () => {
+    const listing = {
+      source: "marketplace", externalId: "1", urlHash: "a".repeat(64),
+      rawTitle: "2013 Toyota RAV4", rawSubtitle: null, priceCents: 890000,
+      previousPriceCents: null, currency: "CAD",
+      location: { city: "Cornwall", region: "PE", country: "CA" },
+      isDealer: false, description: "", photoUrls: [],
+      firstSeenAt: "2026-08-01T00:00:00.000Z", lastSeenAt: "2026-08-14T00:00:00.000Z",
+      rawPayload: {},
+    };
+    const withSeller = { ...listing, marketplace_listing_seller: { id: "abc" } };
+    expect(IngestRequestSchema.safeParse({ listings: [withSeller] }).success).toBe(false);
+  });
+
+  it("accepts an unknown key on an ingest response", () => {
+    // A field a newer server added and this build has never heard of.
+    const parsed = IngestResponseSchema.safeParse({
+      accepted: 2,
+      listingIds: { abc: "id-1" },
+      somethingAddedLater: { anything: true },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("still requires the fields it does know about", () => {
+    expect(IngestResponseSchema.safeParse({ listingIds: {} }).success).toBe(false);
   });
 });

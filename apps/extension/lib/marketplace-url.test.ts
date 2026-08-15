@@ -10,8 +10,18 @@ const criteria = (over: Partial<SavedCriteria> = {}): SavedCriteria => ({
 const paramsOf = (c: SavedCriteria) => new URL(marketplaceUrl(c)).searchParams;
 
 describe("marketplaceUrl", () => {
-  it("targets the vehicles category", () => {
-    expect(new URL(marketplaceUrl(criteria())).pathname).toBe("/marketplace/category/vehicles");
+  /*
+   * Cars, not vehicles. The Vehicles feed is mixed — tractors, skid steers,
+   * park-model trailers and ATVs — and /category/cars sampled clean every time.
+   */
+  it("targets the cars category by default", () => {
+    expect(new URL(marketplaceUrl(criteria())).pathname).toBe("/marketplace/category/cars");
+  });
+
+  it("can target trucks instead", () => {
+    expect(new URL(marketplaceUrl(criteria(), "trucks")).pathname).toBe(
+      "/marketplace/category/trucks",
+    );
   });
 
   it("converts a cents budget to whole dollars", () => {

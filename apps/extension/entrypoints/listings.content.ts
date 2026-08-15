@@ -24,10 +24,11 @@ export default defineContentScript({
   // Vehicle surfaces only. The general Marketplace feed sells sofas, and we
   // have nothing useful to say about a sofa.
   matches: [
-    "https://www.facebook.com/marketplace/category/vehicles*",
-    "https://www.facebook.com/marketplace/category/cars*",
-    "https://www.facebook.com/marketplace/category/motorcycles*",
-    "https://www.facebook.com/marketplace/category/trucks*",
+    // `category/*` subsumes cars, trucks and the seventy make slugs. Which of
+    // them we actually collect from is `isVehicleSurface`'s call, not a match
+    // pattern's — patterns cannot read a query string and cannot be narrowed to
+    // "cars but not motorcycles" without listing every slug twice.
+    "https://www.facebook.com/marketplace/category/*",
     "https://www.facebook.com/marketplace/item/*",
     "https://www.facebook.com/marketplace/*/vehicles*",
     "https://www.facebook.com/marketplace/search*",
@@ -40,9 +41,6 @@ export default defineContentScript({
      * actually collect is decided per payload by `isVehicleSurface`.
      */
     "https://www.facebook.com/marketplace/*/search*",
-    // One slug per make — /category/bmw, /category/ford. Which of those is a
-    // vehicle surface is decided at runtime by isVehicleSurface.
-    "https://www.facebook.com/marketplace/category/*",
   ],
   /*
    * `document_start`, matching the page-world half — and not an optimisation.

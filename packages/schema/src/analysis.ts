@@ -68,7 +68,7 @@ export const ScoreRequestSchema = z.strictObject({
 });
 export type ScoreRequest = z.infer<typeof ScoreRequestSchema>;
 
-export const ScoreResponseSchema = z.strictObject({
+export const ScoreResponseSchema = z.object({
   analyses: z.array(AnalysisSchema),
   /** Ids we've accepted but haven't scored yet. The badge shows "…" and refetches. */
   pending: z.array(z.string()),

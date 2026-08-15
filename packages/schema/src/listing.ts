@@ -144,7 +144,23 @@ export const IngestRequestSchema = z.strictObject({
 });
 export type IngestRequest = z.infer<typeof IngestRequestSchema>;
 
-export const IngestResponseSchema = z.strictObject({
+/*
+ * Responses are read, not sent — so they are `object`, not `strictObject`.
+ *
+ * Strictness on a *request* is the PII boundary in force: a payload with an
+ * added seller field must fail at the edge. A response is the opposite case. The
+ * extension and the server ship separately and a user reloads one of them when
+ * they feel like it, so a strict response schema means every additive server
+ * field breaks every extension that has not been reloaded yet. Adding `rejected`
+ * to the ingest response did exactly that, live:
+ *
+ *   { "code": "unrecognized_keys", "keys": ["rejected"], "message": "Invalid input" }
+ *
+ * The new server was already returning it; the loaded extension had never heard
+ * of it, and refused the whole batch over a field it did not need. Unknown keys
+ * are now ignored, which is what forwards compatibility costs.
+ */
+export const IngestResponseSchema = z.object({
   accepted: z.number().int().nonnegative(),
   /** Server-side ids, keyed by urlHash, so the extension can ask for scores. */
   listingIds: z.record(z.string(), z.string()),

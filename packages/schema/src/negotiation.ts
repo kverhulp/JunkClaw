@@ -44,7 +44,7 @@ export const NegotiateRequestSchema = z.strictObject({
 });
 export type NegotiateRequest = z.infer<typeof NegotiateRequestSchema>;
 
-export const NegotiateResponseSchema = z.strictObject({
+export const NegotiateResponseSchema = z.object({
   runId: z.string(),
   status: NegotiationStatusSchema,
   draft: DraftMessageSchema.nullable(),

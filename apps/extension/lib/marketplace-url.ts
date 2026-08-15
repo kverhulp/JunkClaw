@@ -22,8 +22,19 @@ import type { SavedCriteria } from "@junkclaw/schema";
  */
 
 /** Verified against the live rail: setting each in the UI produces these names. */
-export function marketplaceUrl(criteria: SavedCriteria): string {
-  const url = new URL("https://www.facebook.com/marketplace/category/vehicles");
+export type VehicleCategory = "cars" | "trucks";
+
+export function marketplaceUrl(
+  criteria: SavedCriteria,
+  category: VehicleCategory = "cars",
+): string {
+  /*
+   * `/category/cars`, not `/category/vehicles`. Vehicles is the mixed feed —
+   * sampled live it carries tractors, skid steers, park-model trailers and ATVs
+   * — while cars and trucks came back clean every time. Sending the user to a
+   * feed we do not have to filter beats filtering one we do.
+   */
+  const url = new URL(`https://www.facebook.com/marketplace/category/${category}`);
   const params = url.searchParams;
 
   // Facebook takes whole dollars; our budget is cents. A min of 0 is "no

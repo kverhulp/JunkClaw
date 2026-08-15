@@ -15,9 +15,6 @@
  *    that stays correct.
  */
 
-/** The `category_id` Facebook uses for Vehicles, read off its own category link. */
-const VEHICLES_CATEGORY_ID = "546583916084032";
-
 /**
  * Every category slug Facebook files under Vehicles, read off its own rail.
  *
@@ -31,11 +28,19 @@ const VEHICLES_CATEGORY_ID = "546583916084032";
  * `free`, `propertyrentals` and `search` — accepting every category slug would
  * pour furniture into a corpus of cars. Collected live rather than guessed; a
  * make Facebook adds later is a miss, which is the safe direction to be wrong.
+ *
+ * Cars and trucks only. `vehicles` is the mixed feed — sampled live, it carries
+ * tractors, skid steers, park-model trailers and ATVs alongside the cars — while
+ * `/category/cars` and `/category/trucks` came back clean on every sample, one
+ * category id and nothing else. Facebook already sorts this at source, and a
+ * feed we do not have to filter beats one we do.
+ *
+ * `motorcycles`, `powersports`, `boats`, `trailers` and `rv-campers` are gone on
+ * purpose: they are vehicle surfaces, but not ones this product prices.
  */
 const VEHICLE_CATEGORY_SLUGS = new Set([
-  // Types.
-  "vehicles", "cars", "trucks", "motorcycles", "powersports", "boats", "trailers",
-  "rv-campers",
+  // Types. Cars and trucks, and nothing else.
+  "cars", "trucks",
   // Makes, as Facebook slugs them.
   "acura", "alfa-romeo", "aston-martin", "audi", "bentley", "bmw", "buick",
   "cadillac", "chevrolet", "chrysler", "coda", "daewoo", "daihatsu", "dodge",
@@ -71,13 +76,17 @@ export function isVehicleSurface(href: string): boolean {
   }
 
   /*
-   * `/marketplace/search` and `/marketplace/<id>/search` are the same surface
-   * wearing different paths, and either can be scoped to any category. The
-   * category id is the only thing that distinguishes a search for trucks from a
-   * search for couches, so a search with no category id collects nothing.
+   * Search is not collected at all any more, by either path.
+   *
+   * `category_id=546583916084032` is the *Vehicles* id, and Vehicles is the
+   * mixed feed — that parameter cannot narrow a search to cars, so honouring it
+   * would reopen the door this change closes. Checked against Facebook's own
+   * powersports page: a Yamaha Grizzly, a Honda Rubicon and a Can-Am Outlander
+   * all carry the same listing category id as a Corolla, so no id available here
+   * separates a car from an ATV.
    */
   if (SCOPED_SEARCH_PATH.test(url.pathname) || url.pathname.startsWith("/marketplace/search")) {
-    return url.searchParams.get("category_id") === VEHICLES_CATEGORY_ID;
+    return false;
   }
 
   return false;

@@ -2,7 +2,7 @@ import { defineConfig } from "wxt";
 
 export default defineConfig({
   manifest: {
-    name: "JunkClaw",
+    name: "AutoScout",
     description:
       "Scores used-car listings on Facebook Marketplace against comparable asking prices.",
     // Narrow on purpose. An extension that reads facebook.com and transmits

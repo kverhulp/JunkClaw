@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { Reveal, SpotlightCard } from "../ui/motion";
+import { OdometerNumber, Reveal, SpotlightCard } from "../ui/motion";
 import { cx } from "../ui/primitives";
+import { CORPUS_STATS } from "../../mocks/vehicles";
 
 /**
  * Ported from AutoScout/JunkClaw Dashboard.dc.html.
@@ -91,7 +92,98 @@ export function Hero() {
       </div>
 
       <FeatureRow />
+      <CorpusStats />
+      <HowItWorks />
     </section>
+  );
+}
+
+/**
+ * Real figures from the first collection run, including the unflattering one.
+ *
+ * 17% is the measured share of cars the corpus can currently price — see
+ * docs/findings. Putting it on the landing page is deliberate: the product's
+ * entire claim is that it refuses to invent numbers, and hiding the coverage
+ * figure on the first screen would undercut that before anyone had scrolled.
+ */
+function CorpusStats() {
+  const stats = [
+    { label: "Listings tracked", value: CORPUS_STATS.listingsTracked, suffix: "" },
+    { label: "Median days listed", value: CORPUS_STATS.medianDaysOnMarket, suffix: "" },
+    { label: "Price drops this week", value: CORPUS_STATS.priceDropsThisWeek, suffix: "" },
+    {
+      label: "Cars we can price",
+      value: Math.round(CORPUS_STATS.priceableShare * 100),
+      suffix: "%",
+    },
+  ];
+
+  return (
+    <Reveal>
+      <div className="mt-14 border-t-2 border-divider pt-8">
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
+          {stats.map((stat) => (
+            <div key={stat.label}>
+              <dd className="tabular text-[32px] font-extrabold leading-none">
+                <OdometerNumber value={stat.value} suffix={stat.suffix} />
+              </dd>
+              <dt className="micro mt-2 text-text-muted">{stat.label}</dt>
+            </div>
+          ))}
+        </dl>
+
+        <p className="mt-6 max-w-[62ch] text-[13px] text-text-secondary">
+          Measured, not projected. Coverage is low because the Maritimes is a thin market — where
+          there aren&rsquo;t enough comparable listings, AutoScout says so instead of estimating.
+        </p>
+      </div>
+    </Reveal>
+  );
+}
+
+/**
+ * Three steps, numbered because they are genuinely a sequence — the one case
+ * where numbered markers carry information rather than decorate.
+ */
+const STEPS = [
+  {
+    title: "Connect the extension",
+    copy: "One install, using your own logged-in session. Nothing runs in the background.",
+  },
+  {
+    title: "Shop as you already do",
+    copy: "Browse Marketplace normally. Every listing you pass is scored against similar asks nearby.",
+  },
+  {
+    title: "Shortlist, then negotiate",
+    copy: "Send the good ones to your dashboard, and open a draft with the spending ceiling in view.",
+  },
+];
+
+function HowItWorks() {
+  return (
+    <div className="mt-14 border-t-2 border-divider pt-8">
+      <h2 className="text-[25px]">How it works</h2>
+
+      <ol className="mt-6 grid gap-8 md:grid-cols-3">
+        {STEPS.map((step, index) => (
+          <Reveal key={step.title} delay={index * 0.06}>
+            <li className="flex gap-4">
+              <span
+                aria-hidden
+                className="tabular flex h-7 w-7 shrink-0 items-center justify-center border-2 border-text text-[13px] font-extrabold"
+              >
+                {index + 1}
+              </span>
+              <div>
+                <h6 className="mb-1.5">{step.title}</h6>
+                <p className="m-0 text-[13px] leading-relaxed text-text-secondary">{step.copy}</p>
+              </div>
+            </li>
+          </Reveal>
+        ))}
+      </ol>
+    </div>
   );
 }
 

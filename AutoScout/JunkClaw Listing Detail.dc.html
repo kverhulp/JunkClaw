@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-dc413a56-a71a-4c5d-b70c-c3858ab2acad/styles.css">
+<script src="_ds/modernist-dc413a56-a71a-4c5d-b70c-c3858ab2acad/_ds_bundle.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+</helmet>
+<div style="background:var(--color-neutral-200);min-height:100vh;padding:48px 24px;font-family:var(--font-body);display:flex;justify-content:center">
+  <div style="width:480px;background:var(--color-bg);box-shadow:var(--shadow-lg);color:var(--color-text)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:2px solid var(--color-divider)">
+      <div style="font-family:var(--font-heading);font-weight:800;font-size:15px">Listing detail</div>
+      <button class="btn btn-icon" aria-label="Close"><i data-lucide="x" style="width:18px;height:18px"></i></button>
+    </div>
+
+    <div style="padding:20px;border-bottom:2px solid var(--color-divider)">
+      <div style="position:relative;aspect-ratio:4/3;background:repeating-linear-gradient(135deg,var(--color-neutral-300),var(--color-neutral-300) 10px,var(--color-neutral-200) 10px,var(--color-neutral-200) 20px);display:flex;align-items:center;justify-content:center;filter:grayscale(1) contrast(1.08)">
+        <span style="font-family:var(--font-mono,monospace);font-size:12px;opacity:0.6">vehicle photo 1 of 3</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <div style="width:8px;height:8px;background:var(--color-text)"></div>
+        <div style="width:8px;height:8px;background:var(--color-neutral-400)"></div>
+        <div style="width:8px;height:8px;background:var(--color-neutral-400)"></div>
+      </div>
+    </div>
+
+    <div style="padding:20px;border-bottom:2px solid var(--color-divider)">
+      <h4 style="margin:0 0 2px">2020 Subaru Outback Premium</h4>
+      <div style="font-size:13px;opacity:0.6">Cornwall, PE · listed 21 days ago</div>
+
+      <div style="margin-top:16px">
+        <div style="font-family:var(--font-heading);font-weight:800;font-size:26px;color:var(--color-accent-700)">$2,100 below similar asking prices</div>
+        <div style="font-size:13px;opacity:0.65;margin-top:4px">vs. 6 comparable listings · asking $22,500</div>
+      </div>
+
+      <div style="display:flex;gap:24px;margin-top:16px;font-size:13px">
+        <div><div style="opacity:0.55;font-size:11px;letter-spacing:0.06em;text-transform:uppercase">Days on market</div><div style="font-weight:600;font-variant-numeric:tabular-nums">21</div></div>
+        <div><div style="opacity:0.55;font-size:11px;letter-spacing:0.06em;text-transform:uppercase">Price drops</div><div style="font-weight:600;font-variant-numeric:tabular-nums">1</div></div>
+        <div><div style="opacity:0.55;font-size:11px;letter-spacing:0.06em;text-transform:uppercase">Confidence</div><div style="font-weight:600">Medium</div></div>
+      </div>
+    </div>
+
+    <div style="padding:20px;border-bottom:2px solid var(--color-divider);display:flex;gap:10px;align-items:flex-start">
+      <i data-lucide="info" style="width:16px;height:16px;flex:none;margin-top:2px;opacity:0.6"></i>
+      <div style="font-size:13px;opacity:0.75">Comp set widened: ±1 year, any trim, within 250 km. PEI's market is thin — this is why.</div>
+    </div>
+
+    <div style="padding:20px;border-bottom:2px solid var(--color-divider)">
+      <h6 style="margin-bottom:12px">Risk flags</h6>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ risks }}" as="risk" hint-placeholder-count="2">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span class="tag tag-outline">{{ risk.kind }}</span>
+              <span style="font-size:11px;opacity:0.55">{{ risk.confidence }} confidence</span>
+            </div>
+            <div style="font-size:13px;font-style:italic;opacity:0.8">"{{ risk.evidence }}"</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="padding:20px">
+      <a class="btn btn-secondary btn-block" href="{{ listingUrl }}" target="_blank" rel="noopener">
+        View on Facebook Marketplace <i data-lucide="arrow-up-right" style="width:14px;height:14px;margin-left:4px"></i>
+      </a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() { window.lucide && window.lucide.createIcons(); }
+  componentDidUpdate() { window.lucide && window.lucide.createIcons(); }
+  renderVals() {
+    return {
+      listingUrl: "https://www.facebook.com/marketplace/item/1234567890",
+      risks: [
+        { kind: "needs_work", confidence: "medium", evidence: "needs new brakes and a wheel bearing soon" },
+        { kind: "rust", confidence: "low", evidence: "small surface rust on rear wheel well" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

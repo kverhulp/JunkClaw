@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EnrichedListing, SavedCriteria } from "@junkclaw/schema";
 import { DEFAULT_CRITERIA } from "@junkclaw/schema";
-import { dealScore, fitScore, qualifies } from "./scoring";
+import { dealScore, fitScore, fitVerdict, qualifies } from "./scoring";
 
 function listing(overrides: Partial<EnrichedListing["vehicle"]> = {}, priceCents = 1_000_000): EnrichedListing {
   return {
@@ -154,5 +154,71 @@ describe("qualifies", () => {
 
   it("does not fail a listing whose mileage is simply unknown", () => {
     expect(qualifies(listing({ mileageKm: null }), criteria)).toBe(true);
+  });
+});
+
+describe("fitVerdict", () => {
+  it("reports no failures for a listing inside every hard constraint", () => {
+    expect(fitVerdict(listing(), criteria)).toEqual({ qualifies: true, failures: [] });
+  });
+
+  // The panel says "Over your $15,000 ceiling", not "doesn't qualify". A verdict
+  // the user can't check is one they can't act on.
+  it("names the budget ceiling and by how much the listing misses it", () => {
+    expect(fitVerdict(listing({}, 2_000_000), criteria)).toEqual({
+      qualifies: false,
+      failures: [{ kind: "over_budget", limitCents: 1_500_000, actualCents: 2_000_000 }],
+    });
+  });
+
+  it("names a listing priced under the stated floor", () => {
+    const withFloor: SavedCriteria = { ...criteria, budgetMinCents: 500_000 };
+    expect(fitVerdict(listing({}, 300_000), withFloor).failures).toEqual([
+      { kind: "under_budget", limitCents: 500_000, actualCents: 300_000 },
+    ]);
+  });
+
+  it("names a car older than the stated range", () => {
+    expect(fitVerdict(listing({ year: 2005 }), criteria).failures).toEqual([
+      { kind: "too_old", limitYear: 2010, actualYear: 2005 },
+    ]);
+  });
+
+  it("names a car newer than the stated range", () => {
+    const capped: SavedCriteria = { ...criteria, yearMax: 2015 };
+    expect(fitVerdict(listing({ year: 2020 }), capped).failures).toEqual([
+      { kind: "too_new", limitYear: 2015, actualYear: 2020 },
+    ]);
+  });
+
+  it("names mileage over the cap", () => {
+    expect(fitVerdict(listing({ mileageKm: 300_000 }), criteria).failures).toEqual([
+      { kind: "over_mileage", limitKm: 200_000, actualKm: 300_000 },
+    ]);
+  });
+
+  // Showing one reason and hiding another sends the user to loosen the wrong
+  // setting, then back again when the listing still doesn't appear.
+  it("reports every constraint missed, not only the first", () => {
+    const verdict = fitVerdict(listing({ mileageKm: 300_000 }, 2_000_000), criteria);
+    expect(verdict.qualifies).toBe(false);
+    expect(verdict.failures.map((f) => f.kind)).toEqual(["over_budget", "over_mileage"]);
+  });
+
+  it("does not fail a listing whose mileage is simply unknown", () => {
+    expect(fitVerdict(listing({ mileageKm: null }), criteria).qualifies).toBe(true);
+  });
+
+  it("agrees with qualifies on every case", () => {
+    const subjects = [
+      listing(),
+      listing({}, 2_000_000),
+      listing({ year: 2005 }),
+      listing({ mileageKm: 300_000 }),
+      listing({ mileageKm: null }),
+    ];
+    for (const subject of subjects) {
+      expect(fitVerdict(subject, criteria).qualifies).toBe(qualifies(subject, criteria));
+    }
   });
 });

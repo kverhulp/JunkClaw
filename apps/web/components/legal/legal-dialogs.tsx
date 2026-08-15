@@ -37,9 +37,9 @@ export function LegalDialogs({ open, onClose }: { open: LegalDoc; onClose: () =>
         <Doc updated={UPDATED}>
           <Section title="What AutoScout is">
             An information tool. It compares used-car listings against what similar cars are
-            being asked for nearby, flags things in the description worth checking, and drafts
-            messages for you to send. It is not a broker, a dealer, or an adviser, and it takes
-            no part in any transaction.
+            being asked for nearby, flags things in the description worth checking, and prepares
+            questions for you to ask a seller. It is not a broker, a dealer, or an adviser, and
+            it takes no part in any transaction.
           </Section>
 
           <Section title="Prices are asking prices">
@@ -49,11 +49,11 @@ export function LegalDialogs({ open, onClose }: { open: LegalDoc; onClose: () =>
             AutoScout says so rather than estimating.
           </Section>
 
-          <Section title="Nothing is sent without you">
-            AutoScout drafts messages. You read every one, edit it if you want, and send it
-            yourself. It never contacts a seller on your behalf, never commits you to a purchase,
-            and never arranges payment. Any spending limit you set is enforced in code before a
-            draft is produced.
+          <Section title="AutoScout contacts nobody">
+            It writes no messages and sends none. What it produces is a list of questions and the
+            facts behind them, for you to use however you like. It never contacts a seller on your
+            behalf, never names a price for you to offer, never commits you to a purchase, and
+            never arranges payment.
           </Section>
 
           <Section title="How listings are read">

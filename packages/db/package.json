@@ -13,7 +13,8 @@
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
     "token:issue": "tsx scripts/issue-token.ts",
-    "dev:db": "tsx scripts/dev-db.ts"
+    "dev:db": "tsx scripts/dev-db.ts",
+    "port:reference": "tsx scripts/port-reference-corpus.ts"
   },
   "dependencies": {
     "@junkclaw/core": "workspace:*",

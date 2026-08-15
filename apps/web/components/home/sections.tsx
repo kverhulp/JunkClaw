@@ -131,11 +131,6 @@ function CorpusStats() {
             </div>
           ))}
         </dl>
-
-        <p className="mt-6 max-w-[62ch] text-[13px] text-text-secondary">
-          Measured, not projected. Coverage is low because the Maritimes is a thin market — where
-          there aren&rsquo;t enough comparable listings, AutoScout says so instead of estimating.
-        </p>
       </div>
     </Reveal>
   );

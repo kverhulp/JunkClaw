@@ -26,6 +26,19 @@ const TITLE_PATTERN = /^\s*(\d{4})\s+([A-Za-z][A-Za-z-]*)(?:\s+(.+))?$/;
 const NOT_A_VEHICLE =
   /\b(parts?|part-?out|flat ?bed|trailer|rims?|tires?|wheels?|engine|transmission|bumper|hood|doors?|seats?|canopy|topper|camper top)\b/i;
 
+/**
+ * Whether the title describes something other than a whole vehicle.
+ *
+ * Exported because `extractVehicle` answers null to two different questions —
+ * "this is a set of rims" and "I could not read this title" — and a caller that
+ * displays unparsed listings has to tell them apart. The panel keeps the second
+ * (hiding a car because we failed to read it is its own kind of wrong) and must
+ * discard the first.
+ */
+export function isNotAVehicleTitle(title: string): boolean {
+  return NOT_A_VEHICLE.test(title);
+}
+
 export interface ExtractionResult {
   vehicle: Vehicle;
   /** Which signals were guessed vs. read. Useful for measuring the hit rate. */

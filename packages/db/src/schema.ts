@@ -3,18 +3,31 @@ import {
   index,
   integer,
   jsonb,
-  pgTable,
+  pgSchema,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+/**
+ * Everything lives in a dedicated `junkclaw` schema rather than in `public`.
+ *
+ * The database we point at already holds a `listings` and a `listing_snapshots`
+ * table from an earlier spike, with a different shape — dollars as numeric
+ * where we use integer cents, and six seller-identity columns we deliberately
+ * do not have. Sharing `public` would collide on those two names, and the
+ * failure mode if it ever silently did not is a 100x pricing error.
+ *
+ * Same pattern Mastra already uses here for its own memory tables.
+ */
+export const junkclaw = pgSchema("junkclaw");
 
 /* ------------------------------------------------------------------ *
  * Auth (better-auth's expected shape). Multi-user from day one, so
  * everything user-owned below is scoped by userId.
  * ------------------------------------------------------------------ */
 
-export const user = pgTable("user", {
+export const user = junkclaw.table("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -24,7 +37,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const session = pgTable("session", {
+export const session = junkclaw.table("session", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -37,7 +50,7 @@ export const session = pgTable("session", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const account = pgTable("account", {
+export const account = junkclaw.table("account", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -55,7 +68,7 @@ export const account = pgTable("account", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const verification = pgTable("verification", {
+export const verification = junkclaw.table("verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
@@ -75,7 +88,7 @@ export const verification = pgTable("verification", {
  * Only the SHA-256 of the token is stored. A leaked database should not hand
  * anyone a working credential.
  */
-export const extensionTokens = pgTable(
+export const extensionTokens = junkclaw.table(
   "extension_tokens",
   {
     id: text("id").primaryKey(),
@@ -100,7 +113,7 @@ export const extensionTokens = pgTable(
  * picture of a car is not personal information; the seller is.
  * ------------------------------------------------------------------ */
 
-export const listings = pgTable(
+export const listings = junkclaw.table(
   "listings",
   {
     id: text("id").primaryKey(),
@@ -147,6 +160,34 @@ export const listings = pgTable(
     /** Kept so we can re-parse history after improving the parser. */
     rawPayload: jsonb("raw_payload").notNull(),
 
+    /**
+     * What risk-analyst found in the description, each flag carrying the quote
+     * that triggered it. Written once when a detail page supplies the text
+     * rather than on every score — the description does not change, and paying
+     * a model per scoring request for a fixed answer would be absurd.
+     */
+    riskFlags: jsonb("risk_flags").notNull().default([]),
+    riskAnalysedAt: timestamp("risk_analysed_at", { withTimezone: true }),
+
+    /**
+     * What the listing photo shows, kept in its own column rather than merged
+     * into `risk_flags`.
+     *
+     * The two are different kinds of claim. A risk flag quotes the seller, so
+     * the user can check it against the listing. A photo observation is our
+     * reading of an image — it points at the picture instead, and the panel has
+     * to attribute them differently. Merged into one array, "the seller says it
+     * has a rebuilt title" and "we think we see rust" would render identically,
+     * and one of those is a fact while the other is our opinion.
+     *
+     * Written once, and soon: the fbcdn URLs are signed with roughly a four-day
+     * expiry, so a listing not analysed while its link is live cannot be
+     * analysed later at all.
+     */
+    photoObservations: jsonb("photo_observations").notNull().default([]),
+    photoSummary: text("photo_summary"),
+    photoAnalysedAt: timestamp("photo_analysed_at", { withTimezone: true }),
+
     /** Set when dedup folds this into another listing (relist, cross-post). */
     canonicalListingId: text("canonical_listing_id"),
 
@@ -167,7 +208,7 @@ export const listings = pgTable(
  * Price history. One row per observed price change — drops are leverage, and
  * this table is the only reason we can say "listed 3 weeks ago, dropped once".
  */
-export const listingSnapshots = pgTable(
+export const listingSnapshots = junkclaw.table(
   "listing_snapshots",
   {
     id: text("id").primaryKey(),
@@ -180,7 +221,7 @@ export const listingSnapshots = pgTable(
   (table) => [index("listing_snapshots_listing_idx").on(table.listingId, table.observedAt)],
 );
 
-export const analyses = pgTable(
+export const analyses = junkclaw.table(
   "analyses",
   {
     id: text("id").primaryKey(),
@@ -206,7 +247,45 @@ export const analyses = pgTable(
   (table) => [index("analyses_listing_idx").on(table.listingId, table.userId)],
 );
 
-export const savedCriteria = pgTable("saved_criteria", {
+/**
+ * Cached vehicle research — the external anchor for a market too thin to comp
+ * against itself. M0 measured 17% of cars as priceable from our own corpus; this
+ * is what the other 83% get instead.
+ *
+ * Keyed on the normalised vehicle rather than on a listing: two 2017 WRXs are
+ * one lookup, forever. Values move monthly at most, so a long life is correct —
+ * a slightly stale figure is a far smaller error than no figure.
+ */
+export const vehicleResearch = junkclaw.table(
+  "vehicle_research",
+  {
+    id: text("id").primaryKey(),
+
+    /** Normalised the same way listings are, so a listing finds its own row. */
+    make: text("make").notNull(),
+    model: text("model").notNull(),
+    year: integer("year").notNull(),
+
+    /**
+     * Null when the research found no Canadian pricing — a real answer, and one
+     * worth caching so we don't pay to rediscover it. Never 0: zero reads as
+     * free rather than as unknown, and would then be served forever.
+     */
+    avgPriceCents: integer("avg_price_cents"),
+
+    /** The prose as written, so a human can check the number against it. */
+    research: text("research").notNull(),
+    /** Where the claims came from. An unsourced answer is never stored. */
+    sources: jsonb("sources").notNull().default([]),
+
+    researchedAt: timestamp("researched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("vehicle_research_key_idx").on(table.make, table.model, table.year),
+  ],
+);
+
+export const savedCriteria = junkclaw.table("saved_criteria", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -222,7 +301,7 @@ export const savedCriteria = pgTable("saved_criteria", {
  * function timeout cannot kill a negotiation.
  * ------------------------------------------------------------------ */
 
-export const negotiations = pgTable(
+export const negotiations = junkclaw.table(
   "negotiations",
   {
     id: text("id").primaryKey(),
@@ -252,7 +331,7 @@ export const negotiations = pgTable(
  * Drafts the user approved and the outcome. Seller replies are NOT stored —
  * message contents are personal information and stay in the user's browser.
  */
-export const negotiationDrafts = pgTable(
+export const negotiationDrafts = junkclaw.table(
   "negotiation_drafts",
   {
     id: text("id").primaryKey(),
@@ -273,7 +352,7 @@ export const negotiationDrafts = pgTable(
  * diff a stored payload against the expected schema when the rate alarms.
  * This is how we learn about breakage from telemetry, not from users.
  */
-export const parseFailures = pgTable(
+export const parseFailures = junkclaw.table(
   "parse_failures",
   {
     id: text("id").primaryKey(),

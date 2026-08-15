@@ -1,6 +1,15 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { AnalysisSchema, CompSetSchema, EnrichedListingSchema, NegotiationLimitsSchema } from "@junkclaw/schema";
+// Aliased: the exported tool below is also called getListingHistory.
+import {
+  compFetcher,
+  db,
+  getEnrichedListing,
+  getListingHistory as fetchListingHistory,
+  searchListings,
+} from "@junkclaw/db";
+import { buildCompSet, describeRung, rejectPriceOutliers } from "@junkclaw/core";
 
 /**
  * Tools the agents call. Each is a thin door into `@junkclaw/core` or the
@@ -18,8 +27,12 @@ export const getListingFacts = createTool({
     "dealer flag, description, and first/last seen timestamps.",
   inputSchema: z.object({ listingId: z.string() }),
   outputSchema: EnrichedListingSchema,
-  execute: async () => {
-    throw new Error("get-listing-facts: not implemented — M0, needs the corpus query layer");
+  execute: async ({ listingId }) => {
+    const listing = await getEnrichedListing(db(), listingId);
+    // The contract promises a listing. Inventing an empty one would hand the
+    // agent a car that does not exist and read as fact.
+    if (!listing) throw new Error(`get-listing-facts: no listing ${listingId}`);
+    return listing;
   },
 });
 
@@ -36,8 +49,25 @@ export const getComps = createTool({
     ignoreTrim: z.boolean().default(false),
   }),
   outputSchema: CompSetSchema,
-  execute: async () => {
-    throw new Error("get-comps: not implemented — M1");
+  execute: async ({ listingId, yearBand, radiusKm, ignoreTrim }) => {
+    const subject = await getEnrichedListing(db(), listingId);
+    if (!subject) throw new Error(`get-comps: no listing ${listingId}`);
+
+    // One rung, chosen by the caller. The tool never walks the ladder itself:
+    // the agent decides how far to widen, and the number that comes back is
+    // always computed by core, never by the agent.
+    const rung = { yearBand, radiusKm, ignoreTrim, label: "" };
+    const candidates = await compFetcher(db())(subject, {
+      ...rung,
+      label: describeRung(rung),
+    });
+
+    // Same order of operations as walkWideningLadder: outliers are rejected
+    // before the count is taken, so a bucket that only clears MIN_COMPS on the
+    // back of two bait listings is still reported insufficient. An agent seeing
+    // different numbers from /api/score for the same rung would be reasoning
+    // about a market that does not exist.
+    return buildCompSet(rejectPriceOutliers(candidates), describeRung(rung));
   },
 });
 
@@ -54,8 +84,12 @@ export const getListingHistory = createTool({
       z.object({ priceCents: z.number().int(), observedAt: z.iso.datetime() }),
     ),
   }),
-  execute: async () => {
-    throw new Error("get-listing-history: not implemented — M0");
+  execute: async ({ listingId }) => {
+    const history = await fetchListingHistory(db(), listingId);
+    // Not the same as a listing with no drops: "0 days, 0 drops" is a claim,
+    // and we have not earned it for a listing we cannot find.
+    if (!history) throw new Error(`get-listing-history: no listing ${listingId}`);
+    return history;
   },
 });
 
@@ -97,8 +131,18 @@ export const searchCorpus = createTool({
       }),
     ),
   }),
-  execute: async () => {
-    throw new Error("search-corpus: not implemented — M0");
+  execute: async ({ make, model, yearMin, yearMax, region, limit }) => {
+    const listings = await searchListings(db(), {
+      make,
+      model,
+      yearMin,
+      yearMax,
+      region,
+      limit,
+    });
+    // An empty corpus is a real answer. The curator's whole job is deciding
+    // whether a rung yields a usable sample, and "it does not" is half of that.
+    return { listings };
   },
 });
 

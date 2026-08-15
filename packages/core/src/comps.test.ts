@@ -4,6 +4,7 @@ import {
   MIN_COMPS,
   WIDENING_LADDER,
   buildCompSet,
+  describeRung,
   confidenceFor,
   rejectPriceOutliers,
   walkWideningLadder,
@@ -117,6 +118,62 @@ describe("rejectPriceOutliers — bait prices, judged against the bucket", () =>
     expect(rejectPriceOutliers(bucket).map((c) => c.listingId)).not.toContain("bait");
   });
 
+  /*
+   * The bug this fixes: rejection used to require five candidates, and the
+   * findings measured only one bucket in the whole corpus reaching five. So in
+   * every bucket that could actually produce a number, nothing was cleaned.
+   */
+  it("drops a placeholder price from a four-comp bucket — the case that poisoned the Elantras", () => {
+    const bucket: CompCandidate[] = [
+      { listingId: "bait", priceCents: 9_000 },
+      ...ordinary(3, 1_100_000),
+    ];
+
+    const kept = rejectPriceOutliers(bucket);
+
+    expect(kept.map((c) => c.listingId)).not.toContain("bait");
+    expect(kept).toHaveLength(3);
+  });
+
+  it("drops a bait price from a three-comp bucket", () => {
+    const bucket: CompCandidate[] = [
+      { listingId: "bait", priceCents: 100 },
+      ...ordinary(2, 1_200_000),
+    ];
+
+    expect(rejectPriceOutliers(bucket).map((c) => c.listingId)).not.toContain("bait");
+  });
+
+  /*
+   * And the honest consequence: cleaning a three-comp bucket usually drops it
+   * under MIN_COMPS, so the caller reports "not enough data" instead of a
+   * median built on a placeholder. That is the safer failure of the two.
+   */
+  it("leaves a cleaned thin bucket too small to quote from", () => {
+    const bucket: CompCandidate[] = [
+      { listingId: "bait", priceCents: 100 },
+      ...ordinary(2, 1_200_000),
+    ];
+
+    expect(rejectPriceOutliers(bucket).length).toBeLessThan(MIN_COMPS);
+  });
+
+  it("keeps a thin bucket whose spread is merely ordinary", () => {
+    const bucket: CompCandidate[] = [
+      { listingId: "cheap", priceCents: 800_000 },
+      { listingId: "mid", priceCents: 1_200_000 },
+      { listingId: "dear", priceCents: 2_000_000 },
+    ];
+
+    expect(rejectPriceOutliers(bucket)).toHaveLength(3);
+  });
+
+  it("keeps three identical asking prices rather than calling them all outliers", () => {
+    const bucket = ordinary(3, 1_500_000).map((c) => ({ ...c, priceCents: 1_500_000 }));
+
+    expect(rejectPriceOutliers(bucket)).toHaveLength(3);
+  });
+
   // The reason the fixed band was wrong: both of these buckets are entirely real.
   it("keeps a bucket of $200 beaters that a $300 floor would have deleted", () => {
     const beaters = ordinary(6, 20_000); // $200-$225
@@ -140,14 +197,23 @@ describe("rejectPriceOutliers — bait prices, judged against the bucket", () =>
     expect(rejectPriceOutliers(spread)).toHaveLength(6);
   });
 
-  // With three prices, any one could be "the outlier"; dropping one is a guess.
-  it("leaves a small sample alone rather than guessing", () => {
+  /*
+   * This used to assert the opposite — that a three-price sample containing a
+   * $100 bait was left alone, because "any one could be the outlier". The field
+   * findings showed what that cost: one bucket in the whole corpus reached the
+   * old five-candidate threshold, so the cleaning never ran where it mattered.
+   * Three prices are now cleaned; see the tests above.
+   *
+   * What survives of the original intent is the boundary below MIN_COMPS. A
+   * two-price sample cannot produce a quotable median anyway, so there is
+   * nothing to protect and no judgement worth making.
+   */
+  it("leaves a sample too small to quote from alone", () => {
     const tiny = [
       { listingId: "a", priceCents: 1_000_000 },
-      { listingId: "b", priceCents: 1_100_000 },
       { listingId: "bait", priceCents: 100 },
     ];
-    expect(rejectPriceOutliers(tiny)).toHaveLength(3);
+    expect(rejectPriceOutliers(tiny)).toHaveLength(2);
   });
 
   it("survives a bucket where every price is identical", () => {
@@ -173,5 +239,32 @@ describe("the ladder cleans before it counts", () => {
     const kept = rejectPriceOutliers(withBait);
     expect(kept).toHaveLength(4);
     expect(kept.every((c) => !c.listingId.startsWith("bait"))).toBe(true);
+  });
+});
+
+describe("describeRung", () => {
+  /*
+   * The strongest available check: every canonical rung must describe itself
+   * back to the label already written in WIDENING_LADDER. That keeps a rung an
+   * agent assembles by hand worded the same as one the deterministic ladder
+   * walked, which matters because wideningNote is rendered verbatim to the user.
+   */
+  it("reproduces the label of every rung on the canonical ladder", () => {
+    for (const rung of WIDENING_LADDER) {
+      expect(describeRung(rung)).toBe(rung.label);
+    }
+  });
+
+  it("describes a year band the ladder does not itself use", () => {
+    expect(describeRung({ yearBand: 3, radiusKm: 100, ignoreTrim: true, label: "" })).toBe(
+      "±3 years, any trim, within 100 km",
+    );
+  });
+
+  // 500 km is wider than the province and reads as a region, not a distance.
+  it("calls the widest radius Maritime-wide rather than quoting kilometres", () => {
+    expect(describeRung({ yearBand: 0, radiusKm: 900, ignoreTrim: true, label: "" })).toContain(
+      "Maritime-wide",
+    );
   });
 });

@@ -1,4 +1,11 @@
-import type { CompSet, EnrichedListing, SavedCriteria } from "@junkclaw/schema";
+import type {
+  CompSet,
+  Drivetrain,
+  EnrichedListing,
+  Fuel,
+  SavedCriteria,
+  Transmission,
+} from "@junkclaw/schema";
 
 /**
  * Two scores, shown together and never averaged.
@@ -103,18 +110,133 @@ export function fitScore(inputs: FitInputs): number | null {
   return Math.round((weighted / totalWeight) * 100);
 }
 
-/** Hard constraints. Failing one mutes the listing when the user asked for that. */
-export function qualifies(listing: EnrichedListing, criteria: SavedCriteria): boolean {
-  if (listing.priceCents > criteria.budgetMaxCents) return false;
-  if (listing.priceCents < criteria.budgetMinCents) return false;
-  if (criteria.yearMin !== null && listing.vehicle.year < criteria.yearMin) return false;
-  if (criteria.yearMax !== null && listing.vehicle.year > criteria.yearMax) return false;
+/**
+ * Which hard constraint a listing missed, and by how much.
+ *
+ * Carries the numbers rather than a rendered sentence: the panel, the badge and
+ * the options page word this differently, and a string baked in here would be
+ * wrong in two of the three.
+ */
+export type FitFailure =
+  | { kind: "over_budget"; limitCents: number; actualCents: number }
+  | { kind: "under_budget"; limitCents: number; actualCents: number }
+  | { kind: "too_old"; limitYear: number; actualYear: number }
+  | { kind: "too_new"; limitYear: number; actualYear: number }
+  | { kind: "over_mileage"; limitKm: number; actualKm: number }
+  | { kind: "transmission"; wanted: Transmission[]; actual: Transmission }
+  | { kind: "drivetrain"; wanted: Drivetrain[]; actual: Drivetrain }
+  | { kind: "fuel"; wanted: Fuel[]; actual: Fuel }
+  | { kind: "excluded"; term: string };
+
+export interface FitVerdict {
+  qualifies: boolean;
+  /** Empty when it qualifies. Every miss, not just the first one found. */
+  failures: FitFailure[];
+}
+
+/**
+ * Hard constraints, with the reason attached.
+ *
+ * Reports *every* constraint missed. Stopping at the first sends someone to
+ * loosen their budget, then back again when the listing still doesn't appear
+ * because the mileage was over too.
+ *
+ * Mileage the listing doesn't state is not a failure: unknown is unknown, and
+ * hiding a car for a fact we never read is worse than showing it.
+ */
+export function fitVerdict(listing: EnrichedListing, criteria: SavedCriteria): FitVerdict {
+  const failures: FitFailure[] = [];
+  const { priceCents, vehicle } = listing;
+
+  if (priceCents > criteria.budgetMaxCents) {
+    failures.push({
+      kind: "over_budget",
+      limitCents: criteria.budgetMaxCents,
+      actualCents: priceCents,
+    });
+  }
+  if (priceCents < criteria.budgetMinCents) {
+    failures.push({
+      kind: "under_budget",
+      limitCents: criteria.budgetMinCents,
+      actualCents: priceCents,
+    });
+  }
+  if (criteria.yearMin !== null && vehicle.year < criteria.yearMin) {
+    failures.push({ kind: "too_old", limitYear: criteria.yearMin, actualYear: vehicle.year });
+  }
+  if (criteria.yearMax !== null && vehicle.year > criteria.yearMax) {
+    failures.push({ kind: "too_new", limitYear: criteria.yearMax, actualYear: vehicle.year });
+  }
   if (
     criteria.maxMileageKm !== null &&
-    listing.vehicle.mileageKm !== null &&
-    listing.vehicle.mileageKm > criteria.maxMileageKm
+    vehicle.mileageKm !== null &&
+    vehicle.mileageKm > criteria.maxMileageKm
   ) {
-    return false;
+    failures.push({
+      kind: "over_mileage",
+      limitKm: criteria.maxMileageKm,
+      actualKm: vehicle.mileageKm,
+    });
   }
-  return true;
+
+  /*
+   * Spec matching. An empty list means the user didn't ask, so nothing is
+   * judged — and "unknown" always passes, because most grid titles carry no
+   * transmission or fuel and the extractor says so honestly. Failing those
+   * would empty the shortlist the moment anyone ticks a box.
+   */
+  if (
+    criteria.transmission.length > 0 &&
+    vehicle.transmission !== "unknown" &&
+    !criteria.transmission.includes(vehicle.transmission)
+  ) {
+    failures.push({
+      kind: "transmission",
+      wanted: criteria.transmission,
+      actual: vehicle.transmission,
+    });
+  }
+  if (
+    criteria.drivetrain.length > 0 &&
+    vehicle.drivetrain !== "unknown" &&
+    !criteria.drivetrain.includes(vehicle.drivetrain)
+  ) {
+    failures.push({ kind: "drivetrain", wanted: criteria.drivetrain, actual: vehicle.drivetrain });
+  }
+  if (
+    criteria.fuel.length > 0 &&
+    vehicle.fuel !== "unknown" &&
+    !criteria.fuel.includes(vehicle.fuel)
+  ) {
+    failures.push({ kind: "fuel", wanted: criteria.fuel, actual: vehicle.fuel });
+  }
+
+  /*
+   * Free-text exclusions, matched against the listing's own title.
+   *
+   * The description is the better place to look and is empty on grid payloads,
+   * so the title is what we have — which still catches the terms that matter
+   * most here ("salvage", "parts only"). A blank term is skipped rather than
+   * matching every title.
+   */
+  const haystack = listing.rawTitle.toLowerCase();
+  for (const raw of criteria.excludes) {
+    const term = raw.trim().toLowerCase();
+    if (term.length > 0 && haystack.includes(term)) {
+      failures.push({ kind: "excluded", term: raw.trim() });
+    }
+  }
+
+  return { qualifies: failures.length === 0, failures };
+}
+
+/**
+ * Hard constraints. Failing one mutes the listing when the user asked for that.
+ *
+ * Delegates rather than repeating the checks: two lists that must agree are two
+ * lists that eventually won't.
+ */
+export function qualifies(listing: EnrichedListing, criteria: SavedCriteria): boolean {
+  return fitVerdict(listing, criteria).qualifies;
 }

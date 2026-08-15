@@ -1,3 +1,8 @@
+// Bundled, not fetched — same reasoning as the side panel.
+import "@fontsource/archivo/latin-400.css";
+import "@fontsource/archivo/latin-600.css";
+import "@fontsource/archivo/latin-800.css";
+
 import { SavedCriteriaSchema } from "@junkclaw/schema";
 import { apiBaseUrl, apiToken, criteria, readCriteria } from "@/lib/settings";
 

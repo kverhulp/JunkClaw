@@ -1,0 +1,2038 @@
+<title>AutoScout Deal Panel</title>
+
+<style>
+  /* ============================================================
+     Tokens. Light is the bare :root; dark is redefined twice so
+     the un-stamped "system" state and an explicit toggle both win.
+     The three semantic tones are the ones already shipping in
+     apps/extension/lib/overlay.ts &mdash; the panel and the inline
+     badges have to read as one system.
+     ============================================================ */
+  :root {
+    color-scheme: light;
+
+    /* Modernist tokens with the AutoScout cream override, copied from
+       apps/web/app/globals.css. Token NAMES below are unchanged from this
+       prototype's first draft so the rest of the sheet still resolves; only the
+       values moved onto the shipped system.
+
+       Light only: the web app sets `color-scheme: light` and the cream ground is
+       the identity. A dark variant would be a second design system. */
+    --ground: #faf5e9;
+    --surface: #faf5e9;
+    --surface-2: #f2e9d5;
+    --sunken: #e6d8be;
+    --ink: #201e1d;
+    --ink-2: rgb(32 30 29 / 0.7);
+    --ink-3: rgb(32 30 29 / 0.55);
+    --line: rgb(74 63 47 / 0.35);
+    --line-2: rgb(74 63 47 / 0.35);
+
+    /* Red is the price claim and nothing else. "Below comparable asks" is the
+       one thing worth interrupting a scroll for, so it gets the only accent on
+       the page; "above" and "not enough data" stay in neutral ink. */
+    --good: #ae1800;
+    --good-bg: #fff2ef;
+    --bad: rgb(32 30 29 / 0.7);
+    --bad-bg: #e6d8be;
+    --idle: rgb(32 30 29 / 0.55);
+    --idle-bg: #fdfaf2;
+
+    --accent: #ec3013;
+    --accent-ink: #ae1800;
+
+    --shadow: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+    --shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
+
+    /* Archivo is the system face. Opened as a standalone file this falls back to
+       system-ui — the extension and the web app bundle the real thing. */
+    --sans: "Archivo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 400 14px/1.5 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :where(button, a, input, select, summary):focus-visible {
+    outline: 2px solid var(--good);
+    outline-offset: 2px;
+    border-radius: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  /* ---------- stage ---------- */
+
+  /* A definite height all the way down, so the deal list scrolls inside the
+     panel instead of growing the page. Every flex child in the chain needs
+     min-height:0 or it expands to its content and the constraint is lost. */
+  .stage {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 22px 22px 28px;
+  }
+
+  .stage-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 14px;
+  }
+
+  .stage-head h1 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .stage-head p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 13px;
+  }
+
+  /* ---------- fake browser window ---------- */
+
+  .browser {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line-2);
+    border-radius: 0;
+    background: var(--surface-2);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .chrome-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--sunken);
+    flex-shrink: 0;
+  }
+
+  .dots { display: flex; gap: 6px; }
+  .dots i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--line-2);
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px;
+    border-radius: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-bottom: none;
+    font-size: 12px;
+    color: var(--ink-2);
+    margin-bottom: -10px;
+  }
+
+  .urlbar {
+    flex: 1;
+    padding: 5px 12px;
+    border-radius: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font: 400 12px/1.4 var(--mono);
+    color: var(--ink-3);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .toolbtn {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 0;
+    border: 1px solid transparent;
+    background: var(--accent);
+    color: #ffffff;
+    flex-shrink: 0;
+  }
+
+  .viewport {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  /* ---------- wireframed host page ---------- */
+
+  .host {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 18px;
+    background: var(--surface-2);
+    overflow: auto;
+  }
+
+  .host-label {
+    font: 600 10px/1 var(--mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+  }
+
+  .host-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+    gap: 14px;
+  }
+
+  .host-card {
+    position: relative;
+    border: 1px dashed var(--line-2);
+    border-radius: 0;
+    padding: 8px;
+    background: transparent;
+  }
+
+  .host-photo {
+    aspect-ratio: 4 / 3;
+    border-radius: 0;
+    background: var(--sunken);
+    display: grid;
+    place-items: center;
+    color: var(--line-2);
+    margin-bottom: 8px;
+  }
+
+  .host-line {
+    height: 7px;
+    border-radius: 0;
+    background: var(--sunken);
+    margin-bottom: 6px;
+  }
+  .host-line.short { width: 55%; }
+
+  /* the inline badge, styled exactly as lib/overlay.ts renders it */
+  .badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    font: 600 11px/1.4 var(--sans);
+    padding: 3px 8px;
+    border-radius: 0;
+    color: #fff;
+    background: #2d2b2b;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+  }
+  .badge.below { background: #ec3013; }
+  .badge.above { background: #2d2b2b; }
+  .badge .sub { font-weight: 400; opacity: 0.85; }
+
+  /* ============================================================
+     THE PANEL
+     ============================================================ */
+
+  .panel {
+    position: relative;
+    width: 400px;
+    flex-shrink: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-left: 1px solid var(--line-2);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+
+  .mark {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 0;
+    background: var(--accent);
+    color: #ffffff;
+    flex-shrink: 0;
+  }
+
+  .wordmark {
+    font: 700 13px/1 var(--sans);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .conn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font: 400 11px/1 var(--mono);
+    color: var(--ink-3);
+    margin-top: 4px;
+  }
+  .conn i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--good);
+  }
+
+  .iconbtn {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 0;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-2);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
+  .iconbtn[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+
+  .session {
+    display: flex;
+    gap: 12px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
+    flex-shrink: 0;
+  }
+
+  .session div {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .session b {
+    font: 600 12px/1 var(--mono);
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+
+  .chip {
+    padding: 4px 9px;
+    border-radius: 0;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-2);
+    font: 500 12px/1.3 var(--sans);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  }
+  .chip:hover { border-color: var(--line-2); color: var(--ink); }
+  .chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--surface);
+  }
+  .chip .n {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+    margin-left: 4px;
+  }
+
+  .sort {
+    margin-left: auto;
+    font: 400 12px/1 var(--sans);
+    color: var(--ink-2);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    padding: 5px 6px;
+    cursor: pointer;
+  }
+
+  .list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ---------- deal card ---------- */
+
+  .deal {
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--surface);
+    overflow: hidden;
+    /* The list is a flex column; without this, cards squash to fit instead of
+       overflowing into a scroll. */
+    flex-shrink: 0;
+  }
+  .deal.open { border-color: var(--line-2); box-shadow: var(--shadow-sm); }
+
+  .deal-top {
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    gap: 10px;
+    padding: 10px;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .deal-top:hover { background: var(--surface-2); }
+
+  .thumb {
+    aspect-ratio: 1;
+    border-radius: 0;
+    background: var(--sunken);
+    display: grid;
+    place-items: center;
+    color: var(--line-2);
+    position: relative;
+    overflow: hidden;
+  }
+  .thumb.expired::after {
+    content: "photo expired";
+    position: absolute;
+    inset: auto 0 0 0;
+    font: 400 8px/1.5 var(--mono);
+    text-align: center;
+    color: var(--ink-3);
+    background: var(--surface-2);
+  }
+
+  .deal-title {
+    margin: 0 0 3px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .price {
+    font: 600 17px/1 var(--mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .was {
+    font: 400 11px/1 var(--mono);
+    color: var(--ink-3);
+    text-decoration: line-through;
+  }
+
+  /* Delta is the headline. Never a score, and never colour alone &mdash;
+     the arrow and the words carry it for CVD readers. */
+  .delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 7px;
+    border-radius: 0;
+    font: 500 11.5px/1.3 var(--sans);
+    white-space: nowrap;
+  }
+  .delta b {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .delta.below { background: var(--good-bg); color: var(--good); }
+  .delta.above { background: var(--bad-bg); color: var(--bad); }
+  .delta.idle { background: var(--idle-bg); color: var(--idle); }
+
+  .meta {
+    margin: 6px 0 0;
+    font: 400 11px/1.55 var(--mono);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .meta span + span::before { content: " \00b7  "; }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 7px;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 0;
+    border: 1px solid var(--line);
+    font: 500 10.5px/1.5 var(--sans);
+    color: var(--ink-2);
+  }
+  /* Quiet: the accent is spent on the delta. A tag that appears on most rows
+     would spend it on the unremarkable. */
+  .tag.fit { border-color: var(--line); color: var(--ink-2); }
+  .tag.warn { border-color: color-mix(in oklab, var(--bad) 35%, var(--line)); color: var(--bad); }
+
+  /* ---------- expanded detail ---------- */
+
+  .detail {
+    border-top: 1px solid var(--line);
+    padding: 12px;
+    background: var(--surface-2);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .deal:not(.open) .detail { display: none; }
+
+  .label {
+    font: 600 10px/1 var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 8px;
+  }
+
+  /* The comp meter: p25&ndash;p75 band, median tick, this listing's marker.
+     One series, direct-labelled, no legend needed. */
+  .meter { padding-top: 20px; }
+
+  .meter-track {
+    position: relative;
+    height: 6px;
+    border-radius: 0;
+    background: var(--sunken);
+    border: 1px solid var(--line);
+  }
+
+  .meter-band {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: color-mix(in oklab, var(--ink) 26%, transparent);
+    border-radius: 0;
+  }
+
+  .meter-median {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 2px;
+    background: var(--ink);
+    border-radius: 0;
+  }
+
+  .meter-mark {
+    position: absolute;
+    top: 50%;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--good);
+    box-shadow: 0 0 0 2px var(--surface-2);
+    transform: translate(-50%, -50%);
+  }
+
+  .meter-mark-label {
+    position: absolute;
+    top: -20px;
+    transform: translateX(-50%);
+    font: 600 11px/1 var(--mono);
+    color: var(--good);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .meter-scale {
+    position: relative;
+    height: 15px;
+    margin-top: 6px;
+    font: 400 10px/1 var(--mono);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .meter-scale span {
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  .caption {
+    margin: 10px 0 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .caption em {
+    font-style: normal;
+    color: var(--ink-3);
+  }
+
+  .kv {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    font-size: 12px;
+  }
+  .kv dt { color: var(--ink-2); }
+  .kv dd {
+    margin: 0;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .history {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .history svg { flex-shrink: 0; }
+  .history p {
+    margin: 0;
+    font: 400 11px/1.45 var(--mono);
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .flag {
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    gap: 8px;
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+  }
+  .flag:first-of-type { border-top: none; padding-top: 0; }
+  .flag svg { color: var(--bad); margin-top: 1px; }
+  .flag h4 {
+    margin: 0 0 2px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .flag h4 em {
+    font: 400 10px/1 var(--mono);
+    font-style: normal;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .flag blockquote {
+    margin: 0;
+    padding-left: 8px;
+    border-left: 2px solid var(--line-2);
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  .actions {
+    display: flex;
+    gap: 6px;
+  }
+  .btn {
+    flex: 1;
+    padding: 7px 10px;
+    border-radius: 0;
+    border: 1px solid var(--line-2);
+    background: var(--surface);
+    color: var(--ink);
+    font: 500 12px/1.3 var(--sans);
+    cursor: pointer;
+    transition: background 120ms ease;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--surface);
+  }
+  .btn.primary:hover { opacity: 0.88; }
+  .btn.icon { flex: 0 0 34px; padding: 7px 0; display: grid; place-items: center; }
+
+  .disclaimer {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--ink-3);
+  }
+
+  /* ---------- research agent: book value, known issues, questions ----------
+     A book value and our corpus measure different things and never share a
+     label. Filled delta chip = measured against our corpus. Outlined chip =
+     measured against an external anchor. */
+
+  .delta.book {
+    background: transparent;
+    border: 1px solid color-mix(in oklab, var(--good) 45%, var(--line));
+    color: var(--good);
+  }
+
+  .meter-book {
+    position: absolute;
+    top: -7px;
+    bottom: -7px;
+    width: 0;
+    border-left: 2px dashed var(--ink-2);
+  }
+
+  /* The readout is also the legend &mdash; every mark on the meter appears here with
+     its swatch, its number, and where the number came from. */
+  .readout {
+    display: grid;
+    gap: 9px;
+    margin-top: 14px;
+  }
+
+  .readout-row {
+    display: grid;
+    grid-template-columns: 13px 1fr auto;
+    gap: 9px;
+    align-items: baseline;
+    font-size: 12px;
+  }
+
+  .readout-row > b {
+    font: 600 12.5px/1.3 var(--mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .readout-row p { margin: 0; }
+  .readout-row small {
+    display: block;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--ink-3);
+  }
+
+  .swatch { justify-self: center; align-self: center; }
+  .swatch.band {
+    width: 13px;
+    height: 7px;
+    border-radius: 0;
+    background: color-mix(in oklab, var(--ink) 16%, transparent);
+    border: 1px solid var(--line-2);
+  }
+  .swatch.book {
+    width: 0;
+    height: 13px;
+    border-left: 2px dashed var(--ink-2);
+  }
+  .swatch.dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--good);
+  }
+  .swatch.dot.above { background: var(--bad); }
+
+  .issue {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 10px;
+    padding: 7px 0;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+  }
+  .issue:first-of-type { border-top: none; padding-top: 0; }
+  .issue b { font-weight: 500; }
+  .issue span {
+    font: 400 10.5px/1.6 var(--mono);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .issue small {
+    grid-column: 1 / -1;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--ink-3);
+  }
+
+  .qs { display: grid; gap: 7px; }
+  .q {
+    display: grid;
+    grid-template-columns: 1fr 24px;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .q button {
+    width: 24px;
+    height: 24px;
+    border-radius: 0;
+    border: 1px solid var(--line-2);
+    background: var(--surface);
+    color: var(--ink-2);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 15px;
+    line-height: 1;
+  }
+  .q button:hover { background: var(--surface); color: var(--ink); border-color: var(--ink-2); }
+
+  /* A cache miss costs a query from a 100-lookup trial, so it is never
+     automatic &mdash; the user spends the budget deliberately. */
+  .research {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 1px dashed var(--line-2);
+    border-radius: 0;
+  }
+  .research p {
+    flex: 1;
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--ink-2);
+  }
+  .research .btn { flex: 0 0 auto; }
+
+  .src {
+    font: 400 10px/1.5 var(--mono);
+    color: var(--ink-3);
+  }
+
+  /* ---------- batch research bar ----------
+     The filter is the selection: you research what's in the view. One lookup
+     covers a model-year forever, so the cost is quoted in lookups, not cars. */
+
+  .actionbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+    flex-shrink: 0;
+  }
+  .actionbar p {
+    flex: 1;
+    margin: 0;
+    font: 400 11px/1.45 var(--sans);
+    color: var(--ink-3);
+  }
+  .actionbar b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .actionbar .btn { flex: 0 0 auto; }
+
+  /* ---------- negotiate sheet ---------- */
+
+  .ctx {
+    display: grid;
+    gap: 3px;
+    padding: 10px 11px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--surface-2);
+  }
+  .ctx h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .ctx p {
+    margin: 0;
+    font: 400 11.5px/1.5 var(--mono);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  textarea.draft {
+    width: 100%;
+    min-height: 200px;
+    resize: vertical;
+    padding: 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font: 400 12.5px/1.6 var(--sans);
+  }
+  textarea.draft:focus { outline: none; border-color: var(--ink-2); }
+
+  /* The ceiling verdict. Enforced in core after the draft exists and before the
+     fill &mdash; so the UI shows a decision already made, never a prompt asking for one. */
+  .guard {
+    display: grid;
+    grid-template-columns: 15px 1fr;
+    gap: 9px;
+    padding: 9px 10px;
+    border-radius: 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .guard strong { display: block; }
+  .guard.ok { background: var(--good-bg); color: var(--good); }
+  .guard.blocked { background: var(--bad-bg); color: var(--bad); }
+  .guard svg { margin-top: 2px; }
+
+  .btn[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn[disabled]:hover { background: var(--surface); }
+
+  /* ---------- non-scored states ---------- */
+
+  .deal.pending .deal-top { cursor: default; }
+  .deal.pending .deal-top:hover { background: transparent; }
+
+  .skel {
+    height: 9px;
+    border-radius: 0;
+    background: linear-gradient(90deg, var(--sunken), var(--surface-2), var(--sunken));
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .hidden-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 11px;
+    border: 1px dashed var(--line-2);
+    border-radius: 0;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .linkbtn {
+    border: none;
+    background: none;
+    padding: 0;
+    font: 500 12px/1 var(--sans);
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+
+  .deal.muted { opacity: 0.62; }
+  .deal[hidden] { display: none; }
+
+  .panel-foot {
+    padding: 8px 14px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+    font: 400 10.5px/1.5 var(--sans);
+    color: var(--ink-3);
+    flex-shrink: 0;
+  }
+
+  /* ---------- settings sheet ---------- */
+
+  .sheet {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    transform: translateX(100%);
+    transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .sheet.open { transform: none; }
+
+  .sheet-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .sheet-head h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: grid;
+    /* minmax(0, 1fr), not 1fr: grid children default to min-width:auto and a
+       textarea or a two-up input row will otherwise blow past the panel width. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    align-content: start;
+  }
+
+  .field { display: grid; gap: 5px; min-width: 0; }
+  .field > span {
+    font: 600 10px/1 var(--mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+
+  .input {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 9px;
+    border: 1px solid var(--line-2);
+    border-radius: 0;
+    background: var(--surface);
+  }
+  .input span {
+    font: 400 12px/1 var(--mono);
+    color: var(--ink-3);
+    flex-shrink: 0;
+  }
+  .input input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    font: 500 13px/1.3 var(--mono);
+    font-variant-numeric: tabular-nums;
+    padding: 0;
+  }
+  .input input:focus { outline: none; }
+  .input:focus-within { border-color: var(--ink-2); }
+  .input input[type="text"] { font-family: var(--sans); font-weight: 400; }
+
+  .chipset { display: flex; flex-wrap: wrap; gap: 5px; }
+  .opt {
+    padding: 4px 9px;
+    border-radius: 0;
+    border: 1px solid var(--line-2);
+    background: transparent;
+    color: var(--ink-2);
+    font: 500 11.5px/1.4 var(--sans);
+    cursor: pointer;
+  }
+  .opt[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--surface);
+  }
+  .opt.ex {
+    padding-right: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .opt.ex b { font-weight: 500; }
+  .opt.ex i { font-style: normal; color: var(--ink-3); font-size: 13px; line-height: 1; }
+
+  .switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 11px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--surface-2);
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    width: 100%;
+  }
+  .switch-track {
+    width: 34px;
+    height: 20px;
+    border-radius: 0;
+    background: var(--line-2);
+    flex-shrink: 0;
+    position: relative;
+    transition: background 140ms ease;
+  }
+  .switch-track::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    transition: transform 140ms ease;
+  }
+  .switch[aria-pressed="true"] .switch-track { background: var(--good); }
+  .switch[aria-pressed="true"] .switch-track::after { transform: translateX(14px); }
+  .switch p { margin: 0; font-size: 12.5px; }
+  .switch small { display: block; color: var(--ink-3); font-size: 11px; line-height: 1.4; }
+
+  .rule {
+    height: 1px;
+    background: var(--line);
+    margin: 2px 0;
+  }
+
+  .sheet-foot {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+    flex-shrink: 0;
+  }
+
+  .privacy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    padding: 9px 10px;
+    border-radius: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- narrow: the panel is the whole show ---------- */
+
+  @media (max-width: 900px) {
+    .stage { height: auto; min-height: 100vh; padding: 14px; }
+    .browser { min-height: 0; }
+    .host, .chrome-bar .tab, .chrome-bar .dots { display: none; }
+    .panel { width: 100%; border-left: none; }
+    .viewport { min-height: 620px; }
+  }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.4 15.4l1.8-5.1A2.2 2.2 0 0 1 8.3 8.8h7.4a2.2 2.2 0 0 1 2.1 1.5l1.8 5.1" />
+    <path d="M3.6 15.4h16.8v3.1h-2.2M6.2 18.5H3.6v-3.1" />
+    <circle cx="7.8" cy="18.4" r="1.7" />
+    <circle cx="16.2" cy="18.4" r="1.7" />
+  </symbol>
+  <symbol id="i-mark" viewBox="0 0 18 18" fill="none" stroke="currentColor">
+    <circle cx="9" cy="9" r="6" stroke-width="1.4" />
+    <line x1="9" y1="9" x2="9" y2="3" stroke-width="1.3" />
+    <line x1="9" y1="9" x2="14.71" y2="7.15" stroke-width="1.3" />
+    <line x1="9" y1="9" x2="12.53" y2="13.85" stroke-width="1.3" />
+    <line x1="9" y1="9" x2="5.47" y2="13.85" stroke-width="1.3" />
+    <line x1="9" y1="9" x2="3.29" y2="7.15" stroke-width="1.3" />
+    <circle cx="9" cy="9" r="1.4" fill="currentColor" stroke="none" />
+  </symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3.1" />
+    <path d="M19.4 14a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V22a2 2 0 0 1-4 0v-.1A1.7 1.7 0 0 0 9 20.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.64 1.7 1.7 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.36 9V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.55 1z" />
+  </symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+    <path d="M12 9v4M12 17h.01" />
+  </symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 21l-7-3.6L5 21l1.3-7.8L.7 7.7l7.8-1.1L12 -0.5l3.5 7.3 7.8 1.1-5.6 5.5z" transform="translate(0 2)" />
+  </symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 5l-7 7 7 7" />
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="10.5" cy="10.5" r="6.5" />
+    <path d="M15.4 15.4L21 21" />
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5l5.5 5.5L20 6.5" />
+  </symbol>
+  <symbol id="i-block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M5.6 5.6l12.8 12.8" />
+  </symbol>
+</svg>
+
+<div class="stage">
+  <div class="stage-head">
+    <h1>AutoScout &mdash; side panel prototype</h1>
+    <p>Click the cogwheel, the filter chips, or any listing. Nothing is wired to the API; every figure is illustrative.</p>
+  </div>
+
+  <div class="browser">
+    <div class="chrome-bar">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="tab"><svg width="13" height="13"><use href="#i-car" /></svg> Vehicles for sale</div>
+      <div class="urlbar">facebook.com/marketplace/category/vehicles</div>
+      <div class="toolbtn" title="AutoScout"><svg width="17" height="17"><use href="#i-mark" /></svg></div>
+    </div>
+
+    <div class="viewport">
+      <!-- Deliberately a wireframe. The point is where the badges sit
+           relative to the panel, not a pixel copy of anyone's page. -->
+      <div class="host" aria-hidden="true">
+        <div class="host-label">the page you're already browsing</div>
+        <div class="host-grid">
+          <div class="host-card">
+            <div class="badge below">$1,400 below similar asks <span class="sub">&middot; 12d listed</span></div>
+            <div class="host-photo"><svg width="34" height="34"><use href="#i-car" /></svg></div>
+            <div class="host-line"></div><div class="host-line short"></div>
+          </div>
+          <div class="host-card">
+            <div class="badge below">$2,150 below similar asks</div>
+            <div class="host-photo"><svg width="34" height="34"><use href="#i-car" /></svg></div>
+            <div class="host-line"></div><div class="host-line short"></div>
+          </div>
+          <div class="host-card">
+            <div class="badge above">$900 above similar asks</div>
+            <div class="host-photo"><svg width="34" height="34"><use href="#i-car" /></svg></div>
+            <div class="host-line"></div><div class="host-line short"></div>
+          </div>
+          <div class="host-card">
+            <div class="badge">&hellip;</div>
+            <div class="host-photo"><svg width="34" height="34"><use href="#i-car" /></svg></div>
+            <div class="host-line"></div><div class="host-line short"></div>
+          </div>
+          <div class="host-card">
+            <div class="badge">$1,100 under book value</div>
+            <div class="host-photo"><svg width="34" height="34"><use href="#i-car" /></svg></div>
+            <div class="host-line"></div><div class="host-line short"></div>
+          </div>
+          <div class="host-card">
+            <div class="badge below">$640 below similar asks</div>
+            <div class="host-photo"><svg width="34" height="34"><use href="#i-car" /></svg></div>
+            <div class="host-line"></div><div class="host-line short"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================ PANEL ============================ -->
+      <aside class="panel" aria-label="AutoScout deals">
+        <div class="panel-head">
+          <div class="mark"><svg width="16" height="16"><use href="#i-mark" /></svg></div>
+          <div style="flex:1; min-width:0">
+            <div class="wordmark">AutoScout</div>
+            <div class="conn"><i></i> connected &middot; charlottetown, pe</div>
+          </div>
+          <button class="iconbtn" id="cog" aria-expanded="false" aria-controls="sheet" title="Search criteria">
+            <svg width="16" height="16"><use href="#i-cog" /></svg>
+          </button>
+        </div>
+
+        <div class="session">
+          <div><b>6</b> seen</div>
+          <div><b>5</b> fit</div>
+          <div><b>0</b> errors</div>
+          <div><b>86</b> lookups</div>
+        </div>
+
+        <div class="toolbar">
+          <button class="chip" data-filter="fit" aria-pressed="true">Fits criteria <span class="n">5</span></button>
+          <button class="chip" data-filter="watch" aria-pressed="false">Watching <span class="n">1</span></button>
+          <button class="chip" data-filter="all" aria-pressed="false">All <span class="n">6</span></button>
+          <select class="sort" aria-label="Sort listings">
+            <option>Biggest gap</option>
+            <option>Newest first</option>
+            <option>Cheapest first</option>
+          </select>
+        </div>
+
+        <div class="list" id="list">
+
+          <!-- ---------- 1. scored, expanded: the full detail view ---------- -->
+          <article class="deal open" data-fit="1" data-id="rav4">
+            <button class="deal-top" aria-expanded="true">
+              <div class="thumb"><svg width="26" height="26"><use href="#i-car" /></svg></div>
+              <div>
+                <h3 class="deal-title">2013 Toyota RAV4 LE AWD</h3>
+                <div class="price-row">
+                  <span class="price">$8,900</span>
+                  <span class="was">$9,800</span>
+                </div>
+                <span class="delta below">&#9660; <b>$1,400</b> below similar asks</span>
+                <p class="meta">
+                  <span>187,000 km</span><span>Cornwall, PE</span><span>12d listed</span>
+                </p>
+                <div class="tags">
+                  <span class="tag fit">Fits your criteria</span>
+                  <span class="tag warn"><svg width="10" height="10"><use href="#i-warn" /></svg> 2 flags</span>
+                </div>
+              </div>
+            </button>
+
+            <div class="detail">
+              <div>
+                <p class="label">two numbers, two claims</p>
+                <div class="meter">
+                  <div class="meter-track">
+                    <div class="meter-band" style="left:31%; right:20%"></div>
+                    <div class="meter-median" style="left:51%"></div>
+                    <div class="meter-book" style="left:64%"></div>
+                    <div class="meter-mark" style="left:20%"></div>
+                    <div class="meter-mark-label" style="left:20%">$8,900</div>
+                  </div>
+                </div>
+
+                <div class="readout">
+                  <div class="readout-row">
+                    <span class="swatch book"></span>
+                    <p>Book value
+                      <small>What these sell for nationally &mdash; transaction data.<br />VinAudit Canada, as of Jul 2026.</small>
+                    </p>
+                    <b>$10,900</b>
+                  </div>
+                  <div class="readout-row">
+                    <span class="swatch band"></span>
+                    <p>PEI asks
+                      <small>What this market opens at &mdash; middle half shaded.<br />7 comps, high confidence. Widened to &plusmn;2 years and 150 km.</small>
+                    </p>
+                    <b>$10,300</b>
+                  </div>
+                  <div class="readout-row">
+                    <span class="swatch dot"></span>
+                    <p>This listing
+                      <small>$2,000 under book &middot; $1,400 under local asks.</small>
+                    </p>
+                    <b>$8,900</b>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p class="label">known problems &mdash; 2013 RAV4</p>
+                <div class="issue">
+                  <b>Rear suspension arm corrosion</b>
+                  <span>recall &middot; open</span>
+                  <small>Salt-belt vehicles specifically. Worth a look underneath before you drive an hour.</small>
+                </div>
+                <div class="issue">
+                  <b>Excessive oil consumption</b>
+                  <span>41 complaints</span>
+                  <small>Reported between 120,000 and 200,000 km. This one is at 187,000.</small>
+                </div>
+                <p class="src">NHTSA complaints &amp; recalls &middot; free, open data &middot; about the model-year, not this car</p>
+              </div>
+
+              <div>
+                <p class="label">worth asking this seller</p>
+                <div class="qs">
+                  <div class="q">
+                    <span>Has the rear suspension recall been done? It's a PEI car.</span>
+                    <button type="button" title="Add to the draft message">+</button>
+                  </div>
+                  <div class="q">
+                    <span>How much oil does it use between changes?</span>
+                    <button type="button" title="Add to the draft message">+</button>
+                  </div>
+                  <div class="q">
+                    <span>Can you send the VIN so I can pull the history?</span>
+                    <button type="button" title="Add to the draft message">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p class="label">price history</p>
+                <div class="history">
+                  <svg width="104" height="30" viewBox="0 0 104 30" fill="none" aria-hidden="true">
+                    <path d="M2 8 H60 V22 H102" stroke="var(--ink-2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+                    <circle cx="102" cy="22" r="3.5" fill="var(--good)" stroke="var(--surface-2)" stroke-width="2" />
+                  </svg>
+                  <p>$9,800 &rarr; $8,900<br />1 drop, 5 days ago</p>
+                </div>
+              </div>
+
+              <div>
+                <p class="label">flags from the description</p>
+                <div class="flag">
+                  <svg width="15" height="15"><use href="#i-warn" /></svg>
+                  <div>
+                    <h4>Needs work <em>medium</em></h4>
+                    <blockquote>"Needs a new rear wheel bearing, otherwise drives great."</blockquote>
+                  </div>
+                </div>
+                <div class="flag">
+                  <svg width="15" height="15"><use href="#i-warn" /></svg>
+                  <div>
+                    <h4>No maintenance records <em>low</em></h4>
+                    <blockquote>"Bought it from my uncle, not sure when the timing belt was done."</blockquote>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p class="label">against your criteria</p>
+                <dl class="kv">
+                  <dt>Under your $15,000 ceiling</dt><dd>$8,900</dd>
+                  <dt>Under 200,000 km</dt><dd>187,000</dd>
+                  <dt>2010 or newer</dt><dd>2013</dd>
+                  <dt>Within 100 km of Charlottetown</dt><dd>18 km</dd>
+                </dl>
+              </div>
+
+              <div class="actions">
+                <button class="btn primary" data-negotiate="rav4">Negotiate</button>
+                <a class="btn" href="#" style="text-align:center; text-decoration:none">Open listing &#8599;</a>
+                <button class="btn icon" title="Watch this listing"><svg width="15" height="15"><use href="#i-star" /></svg></button>
+              </div>
+
+              <p class="disclaimer">
+                Compared against what other sellers are <strong>asking</strong>, not what
+                cars sold for. Seller details never leave this browser.
+              </p>
+            </div>
+          </article>
+
+          <!-- ---------- 2. good delta, but the flags matter ---------- -->
+          <article class="deal" data-fit="1" data-id="f150">
+            <button class="deal-top" aria-expanded="false">
+              <div class="thumb expired"><svg width="26" height="26"><use href="#i-car" /></svg></div>
+              <div>
+                <h3 class="deal-title">2011 Ford F-150 XLT 4WD SuperCrew</h3>
+                <div class="price-row"><span class="price">$6,400</span></div>
+                <span class="delta below">&#9660; <b>$2,150</b> below similar asks</span>
+                <p class="meta">
+                  <span>244,000 km</span><span>Montague, PE</span><span>31d listed</span>
+                </p>
+                <div class="tags">
+                  <span class="tag fit">Fits your criteria</span>
+                  <span class="tag warn"><svg width="10" height="10"><use href="#i-warn" /></svg> rebuilt title, rust</span>
+                </div>
+              </div>
+            </button>
+            <div class="detail">
+              <div>
+                <p class="label">vs. 11 similar asking prices</p>
+                <div class="meter">
+                  <div class="meter-track">
+                    <div class="meter-band" style="left:36%; right:16%"></div>
+                    <div class="meter-median" style="left:56%"></div>
+                    <div class="meter-mark" style="left:12%"></div>
+                    <div class="meter-mark-label" style="left:12%">$6,400</div>
+                  </div>
+                  <div class="meter-scale">
+                    <span style="left:36%">$7,900</span>
+                    <span style="left:56%">median $8,550</span>
+                    <span style="left:84%">$9,700</span>
+                  </div>
+                </div>
+                <p class="caption">
+                  A gap this wide usually has a reason. Both flags below are in the seller's own words.
+                </p>
+              </div>
+
+              <div class="research">
+                <p><strong>No book value cached for the 2011 F-150 XLT.</strong> Looking it up spends 1 of your 86 remaining lookups.</p>
+                <button class="btn" style="flex:0 0 auto">
+                  <svg width="12" height="12" style="vertical-align:-1px"><use href="#i-search" /></svg>
+                  Research
+                </button>
+              </div>
+              <div>
+                <p class="label">flags from the description</p>
+                <div class="flag">
+                  <svg width="15" height="15"><use href="#i-warn" /></svg>
+                  <div>
+                    <h4>Salvage or rebuilt <em>high</em></h4>
+                    <blockquote>"Rebuilt title from a front end hit in 2019, inspected and passed."</blockquote>
+                  </div>
+                </div>
+                <div class="flag">
+                  <svg width="15" height="15"><use href="#i-warn" /></svg>
+                  <div>
+                    <h4>Rust <em>high</em></h4>
+                    <blockquote>"Rockers have some rust, patched last spring. It's a PEI truck."</blockquote>
+                  </div>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="btn primary" data-negotiate="f150">Negotiate</button>
+                <a class="btn" href="#" style="text-align:center; text-decoration:none">Open listing &#8599;</a>
+                <button class="btn icon" title="Watch this listing"><svg width="15" height="15"><use href="#i-star" /></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <!-- ---------- 3. above asks, being watched ---------- -->
+          <article class="deal" data-fit="1" data-watch="1" data-id="civic">
+            <button class="deal-top" aria-expanded="false">
+              <div class="thumb"><svg width="26" height="26"><use href="#i-car" /></svg></div>
+              <div>
+                <h3 class="deal-title">2016 Honda Civic EX Sedan</h3>
+                <div class="price-row"><span class="price">$13,750</span></div>
+                <span class="delta above">&#9650; <b>$900</b> above similar asks</span>
+                <p class="meta">
+                  <span>141,000 km</span><span>Charlottetown, PE</span><span>4d listed</span>
+                </p>
+                <div class="tags">
+                  <span class="tag fit">Fits your criteria</span>
+                  <span class="tag"><svg width="10" height="10"><use href="#i-star" /></svg> Watching</span>
+                </div>
+              </div>
+            </button>
+            <div class="detail">
+              <div>
+                <p class="label">vs. 9 similar asking prices</p>
+                <div class="meter">
+                  <div class="meter-track">
+                    <div class="meter-band" style="left:22%; right:26%"></div>
+                    <div class="meter-median" style="left:44%"></div>
+                    <div class="meter-mark" style="left:78%; background:var(--bad)"></div>
+                    <div class="meter-mark-label" style="left:78%; color:var(--bad)">$13,750</div>
+                  </div>
+                  <div class="meter-scale">
+                    <span style="left:22%">$11,900</span>
+                    <span style="left:44%">median $12,850</span>
+                    <span style="left:74%">$13,600</span>
+                  </div>
+                </div>
+                <p class="caption">
+                  Only 4 days listed &mdash; sellers here usually move first after two weeks.
+                </p>
+              </div>
+              <div class="actions">
+                <button class="btn primary" data-negotiate="civic">Negotiate</button>
+                <a class="btn" href="#" style="text-align:center; text-decoration:none">Open listing &#8599;</a>
+                <button class="btn icon" title="Stop watching"><svg width="15" height="15"><use href="#i-star" /></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <!-- ---------- 4. still scoring ---------- -->
+          <article class="deal pending" data-fit="1" data-id="forester">
+            <div class="deal-top" aria-hidden="false">
+              <div class="thumb"><svg width="26" height="26"><use href="#i-car" /></svg></div>
+              <div>
+                <h3 class="deal-title">2009 Subaru Forester X</h3>
+                <div class="price-row"><span class="price">$5,300</span></div>
+                <span class="delta idle">Finding comparable asks&hellip;</span>
+                <div class="skel" style="width:70%; margin-top:9px"></div>
+              </div>
+            </div>
+          </article>
+
+          <!-- ---------- 5. insufficient: says so, plainly ---------- -->
+          <article class="deal" data-fit="1" data-id="sierra">
+            <button class="deal-top" aria-expanded="false">
+              <div class="thumb"><svg width="26" height="26"><use href="#i-car" /></svg></div>
+              <div>
+                <h3 class="deal-title">2007 GMC Sierra 1500 SLE</h3>
+                <div class="price-row"><span class="price">$4,200</span></div>
+                <span class="delta book">&#9660; <b>$1,100</b> under book value</span>
+                <p class="meta">
+                  <span>189,000 km</span><span>Souris, PE</span><span>8d listed</span>
+                </p>
+                <div class="tags">
+                  <span class="tag">No local comps</span>
+                </div>
+              </div>
+            </button>
+            <div class="detail">
+              <div>
+                <p class="label">book value only</p>
+                <div class="meter">
+                  <div class="meter-track">
+                    <div class="meter-book" style="left:75%"></div>
+                    <div class="meter-mark" style="left:20%"></div>
+                    <div class="meter-mark-label" style="left:20%">$4,200</div>
+                  </div>
+                </div>
+
+                <div class="readout">
+                  <div class="readout-row">
+                    <span class="swatch book"></span>
+                    <p>Book value
+                      <small>VinAudit Canada, as of Jul 2026.</small>
+                    </p>
+                    <b>$5,300</b>
+                  </div>
+                  <div class="readout-row">
+                    <span class="swatch band" style="opacity:0.35"></span>
+                    <p>PEI asks
+                      <small>Only 2 comparable asks after widening to &plusmn;4 years and 150 km. Under 3 we won't put a number on it.</small>
+                    </p>
+                    <b style="color:var(--ink-3)">&mdash;</b>
+                  </div>
+                  <div class="readout-row">
+                    <span class="swatch dot"></span>
+                    <p>This listing
+                      <small>$1,100 under book. No local reading &mdash; this market is too thin for this truck.</small>
+                    </p>
+                    <b>$4,200</b>
+                  </div>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="btn primary" data-negotiate="sierra">Negotiate</button>
+                <a class="btn" href="#" style="text-align:center; text-decoration:none">Open listing &#8599;</a>
+                <button class="btn icon" title="Watch this listing"><svg width="15" height="15"><use href="#i-star" /></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <div class="hidden-row" id="hiddenRow">
+            <span>1 listing hidden by your criteria</span>
+            <button class="linkbtn" id="showHidden">Show</button>
+          </div>
+
+          <article class="deal muted" data-id="ram" hidden>
+            <button class="deal-top" aria-expanded="false">
+              <div class="thumb"><svg width="26" height="26"><use href="#i-car" /></svg></div>
+              <div>
+                <h3 class="deal-title">2019 RAM 1500 Big Horn Crew Cab</h3>
+                <div class="price-row"><span class="price">$31,900</span></div>
+                <span class="delta idle">Over your $15,000 ceiling</span>
+                <p class="meta">
+                  <span>96,000 km</span><span>Summerside, PE</span><span>2d listed</span>
+                </p>
+              </div>
+            </button>
+            <div class="detail">
+              <p class="caption" style="margin:0">
+                Hidden because &ldquo;Hide listings that don't qualify&rdquo; is on. Turn it off in
+                the cogwheel to badge these instead of hiding them.
+              </p>
+            </div>
+          </article>
+        </div>
+
+        <div class="actionbar">
+          <p><b>3 unresearched</b> in this view &middot; costs 2 lookups, 1 already cached</p>
+          <button class="btn primary" style="flex:0 0 auto">
+            <svg width="12" height="12" style="vertical-align:-1px"><use href="#i-search" /></svg>
+            Research
+          </button>
+        </div>
+
+        <div class="panel-foot">
+          AutoScout only reads pages you open yourself. It never browses Marketplace in the background.
+        </div>
+
+        <!-- ---------- settings sheet ---------- -->
+        <div class="sheet" id="sheet" role="dialog" aria-label="Search criteria" aria-modal="false">
+          <div class="sheet-head">
+            <button class="iconbtn" id="sheetBack" title="Back to deals">
+              <svg width="16" height="16"><use href="#i-back" /></svg>
+            </button>
+            <h2>Search criteria</h2>
+          </div>
+
+          <div class="sheet-body">
+            <p class="caption" style="margin:0">
+              Drives the Fit line on every listing and decides what gets hidden.
+            </p>
+
+            <label class="field">
+              <span>Budget</span>
+              <div class="pair">
+                <div class="input"><span>$</span><input type="text" value="0" inputmode="numeric" aria-label="Minimum budget" /></div>
+                <div class="input"><span>$</span><input type="text" value="15,000" inputmode="numeric" aria-label="Maximum budget" /></div>
+              </div>
+            </label>
+
+            <label class="field">
+              <span>Max mileage</span>
+              <div class="input"><input type="text" value="200,000" inputmode="numeric" aria-label="Max mileage" /><span>km</span></div>
+            </label>
+
+            <label class="field">
+              <span>Model years</span>
+              <div class="pair">
+                <div class="input"><input type="text" value="2010" inputmode="numeric" aria-label="Earliest year" /></div>
+                <div class="input"><input type="text" value="any" aria-label="Latest year" /></div>
+              </div>
+            </label>
+
+            <label class="field">
+              <span>Search from</span>
+              <div class="pair">
+                <div class="input"><input type="text" value="Charlottetown" aria-label="Origin city" /></div>
+                <div class="input"><input type="text" value="100" inputmode="numeric" aria-label="Radius" /><span>km</span></div>
+              </div>
+            </label>
+
+            <div class="field">
+              <span>Transmission</span>
+              <div class="chipset">
+                <button class="opt" aria-pressed="true">Automatic</button>
+                <button class="opt" aria-pressed="false">Manual</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span>Drivetrain</span>
+              <div class="chipset">
+                <button class="opt" aria-pressed="false">FWD</button>
+                <button class="opt" aria-pressed="false">RWD</button>
+                <button class="opt" aria-pressed="true">AWD</button>
+                <button class="opt" aria-pressed="true">4WD</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span>Fuel</span>
+              <div class="chipset">
+                <button class="opt" aria-pressed="true">Gas</button>
+                <button class="opt" aria-pressed="true">Diesel</button>
+                <button class="opt" aria-pressed="false">Hybrid</button>
+                <button class="opt" aria-pressed="false">Electric</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span>Never show me</span>
+              <div class="chipset">
+                <span class="opt ex"><b>salvage title</b> <i>&times;</i></span>
+                <span class="opt ex"><b>needs engine</b> <i>&times;</i></span>
+                <span class="opt ex"><b>parts only</b> <i>&times;</i></span>
+                <button class="opt">+ add</button>
+              </div>
+            </div>
+
+            <button class="switch" id="muteSwitch" aria-pressed="true">
+              <span class="switch-track"></span>
+              <p>
+                Hide listings that don't qualify
+                <small>Off shows them dimmed with the reason instead.</small>
+              </p>
+            </button>
+
+            <div class="rule"></div>
+
+            <div class="field">
+              <span>Vehicle research</span>
+              <button class="switch" id="autoLookup" aria-pressed="false">
+                <span class="switch-track"></span>
+                <p>
+                  Look up book values automatically
+                  <small>Off: cached values show for free, and a new model-year needs one click. On: every unseen model-year spends a lookup.</small>
+                </p>
+              </button>
+              <p class="privacy" style="margin-top:8px">
+                <strong>86 of 100 lookups left.</strong> One lookup covers a model-year
+                forever &mdash; every 2013 RAV4 you ever see reads from the same cached value.
+                Known problems and recalls are free and always on.
+              </p>
+            </div>
+
+            <div class="rule"></div>
+
+            <label class="field">
+              <span>Server</span>
+              <div class="input"><input type="text" value="http://localhost:3000" aria-label="Server" /></div>
+            </label>
+
+            <label class="field">
+              <span>Token</span>
+              <div class="input"><input type="password" value="jc_livetoken_placeholder" aria-label="Token" /></div>
+            </label>
+
+            <p class="privacy">
+              Seller names, profile links, and your messages never leave this browser.
+              AutoScout sends the car &mdash; price, mileage, location, photos &mdash; and nothing about
+              the person selling it.
+            </p>
+          </div>
+
+          <div class="sheet-foot">
+            <button class="btn primary" id="sheetSave">Save</button>
+            <button class="btn" id="sheetCancel">Cancel</button>
+          </div>
+        </div>
+
+        <!-- ---------- negotiate sheet ---------- -->
+        <div class="sheet" id="negotiate" role="dialog" aria-label="Negotiate" aria-modal="false">
+          <div class="sheet-head">
+            <button class="iconbtn" id="negBack" title="Back to deals">
+              <svg width="16" height="16"><use href="#i-back" /></svg>
+            </button>
+            <h2>Negotiate</h2>
+          </div>
+
+          <div class="sheet-body">
+            <div class="ctx">
+              <h3 id="negCar">2013 Toyota RAV4 LE AWD</h3>
+              <p id="negAsk">asking $8,900 &middot; 187,000 km &middot; Cornwall, PE</p>
+            </div>
+
+            <div class="field">
+              <span>Your limits</span>
+              <div class="pair">
+                <div class="input"><span>target $</span><input type="text" id="negTarget" value="8,200" inputmode="numeric" aria-label="Target price" /></div>
+                <div class="input"><span>max $</span><input type="text" id="negCeiling" value="8,500" inputmode="numeric" aria-label="Ceiling price" /></div>
+              </div>
+              <p class="src">Target shapes the draft. Max is a hard stop, checked in code after the draft exists.</p>
+            </div>
+
+            <div class="field">
+              <span>Opening message</span>
+              <textarea class="draft" id="negDraft" aria-label="Draft message"></textarea>
+              <p class="src">Grounded in 7 local asks and the open recall. Asks for the VIN, because most private listings omit it.</p>
+            </div>
+
+            <div class="guard ok" id="negGuard">
+              <svg width="15" height="15"><use href="#i-check" /></svg>
+              <div>
+                <strong>Under your $8,500 ceiling.</strong>
+                Every price in the draft is checked, including ones you type yourself.
+              </div>
+            </div>
+
+            <p class="privacy">
+              AutoScout fills the Messenger box. <strong>You press send.</strong> Nothing is
+              ever sent on your behalf, and nothing you write here leaves your browser.
+            </p>
+          </div>
+
+          <div class="sheet-foot">
+            <button class="btn primary" id="negFill">Fill Messenger box</button>
+            <button class="btn" id="negCopy" style="flex:0 0 auto">Copy</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script>
+  const sheet = document.getElementById("sheet");
+  const cog = document.getElementById("cog");
+
+  function setSheet(open) {
+    sheet.classList.toggle("open", open);
+    cog.setAttribute("aria-expanded", String(open));
+  }
+
+  cog.addEventListener("click", () => setSheet(!sheet.classList.contains("open")));
+  document.getElementById("sheetBack").addEventListener("click", () => setSheet(false));
+  document.getElementById("sheetCancel").addEventListener("click", () => setSheet(false));
+  document.getElementById("sheetSave").addEventListener("click", () => setSheet(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    setSheet(false);
+    setNegotiate(false);
+  });
+
+  // expand / collapse a listing
+  for (const top of document.querySelectorAll("button.deal-top")) {
+    top.addEventListener("click", () => {
+      const deal = top.closest(".deal");
+      const open = deal.classList.toggle("open");
+      top.setAttribute("aria-expanded", String(open));
+    });
+  }
+
+  // Filter chips. The filter is also the selection for batch research \u2014 you
+  // research what's in the view.
+  const chips = [...document.querySelectorAll(".chip")];
+  const deals = [...document.querySelectorAll(".deal")];
+  const hiddenRow = document.getElementById("hiddenRow");
+  const mutedDeal = document.querySelector(".deal.muted");
+  let activeFilter = "fit";
+  let revealMuted = false;
+
+  function applyFilter() {
+    for (const deal of deals) {
+      let show;
+      if (activeFilter === "all") show = true;
+      else if (activeFilter === "watch") show = deal.dataset.watch === "1";
+      else show = deal.dataset.fit === "1" || (deal === mutedDeal && revealMuted);
+      deal.hidden = !show;
+    }
+    hiddenRow.hidden = activeFilter !== "fit";
+  }
+
+  for (const chip of chips) {
+    chip.addEventListener("click", () => {
+      for (const c of chips) c.setAttribute("aria-pressed", String(c === chip));
+      activeFilter = chip.dataset.filter;
+      applyFilter();
+    });
+  }
+  applyFilter();
+
+  // the hidden-by-criteria disclosure
+  const showHidden = document.getElementById("showHidden");
+  showHidden.addEventListener("click", () => {
+    revealMuted = !revealMuted;
+    showHidden.textContent = revealMuted ? "Hide" : "Show";
+    applyFilter();
+  });
+
+  /* ---------- negotiate ----------
+     One draft per car. Prices are quoted under each ceiling on purpose: the
+     real enforceCeiling() checks EVERY number a draft names, not just the offer. */
+
+  const NEGOTIATIONS = {
+    rav4: {
+      car: "2013 Toyota RAV4 LE AWD",
+      ask: "asking $8,900 \u00b7 187,000 km \u00b7 Cornwall, PE",
+      target: "8,200",
+      ceiling: "8,500",
+      body:
+        "Hi \u2014 is the RAV4 still available?\n\n" +
+        "I've been comparing it against similar ones around Charlottetown and your price looks fair. " +
+        "Two things before I make the drive out: has the rear suspension arm recall been done, and " +
+        "how much oil does it use between changes?\n\n" +
+        "Could you send me the VIN as well? If it checks out I could do $8,200 cash this weekend.",
+    },
+    f150: {
+      car: "2011 Ford F-150 XLT 4WD SuperCrew",
+      ask: "asking $6,400 \u00b7 244,000 km \u00b7 Montague, PE",
+      target: "5,700",
+      ceiling: "6,000",
+      body:
+        "Hi \u2014 is the F-150 still available?\n\n" +
+        "I'm interested, but the rebuilt title and the rocker rust mean I'd want it looked at before " +
+        "anything is final. Has it been through a provincial safety since the rebuild, and do you " +
+        "still have the paperwork from the repair?\n\n" +
+        "Could you send the VIN too? If the frame is solid I could do $5,700 this week.",
+    },
+    civic: {
+      car: "2016 Honda Civic EX Sedan",
+      ask: "asking $13,750 \u00b7 141,000 km \u00b7 Charlottetown, PE",
+      target: "12,500",
+      ceiling: "12,900",
+      body:
+        "Hi \u2014 is the Civic still available?\n\n" +
+        "I'm looking at a couple of others in town this week. Before I come see it: has it had any " +
+        "body work, and do you have service records for it?\n\n" +
+        "Could you send the VIN? If everything's clean I could do $12,500.",
+    },
+    sierra: {
+      car: "2007 GMC Sierra 1500 SLE",
+      ask: "asking $4,200 \u00b7 189,000 km \u00b7 Souris, PE",
+      target: "3,900",
+      ceiling: "4,200",
+      body:
+        "Hi \u2014 is the Sierra still available?\n\n" +
+        "On a truck this age here I'd want a look underneath before committing. Has it had any frame " +
+        "or brake line work done, and when was it last inspected?\n\n" +
+        "Could you send the VIN? If it's solid I could do $3,900 cash.",
+    },
+  };
+
+  const negSheet = document.getElementById("negotiate");
+  const negDraft = document.getElementById("negDraft");
+  const negCeiling = document.getElementById("negCeiling");
+  const negTarget = document.getElementById("negTarget");
+  const negGuard = document.getElementById("negGuard");
+  const negFill = document.getElementById("negFill");
+
+  function setNegotiate(open) {
+    negSheet.classList.toggle("open", open);
+  }
+
+  function cents(text) {
+    const n = Number(String(text).replace(/[^0-9.]/g, ""));
+    return Number.isFinite(n) ? Math.round(n * 100) : null;
+  }
+
+  /* Mirrors packages/core/limits.ts: every price the draft names is checked,
+     not just the highest or the one that looks like an offer. */
+  function checkCeiling() {
+    const ceiling = cents(negCeiling.value);
+    const named = [...negDraft.value.matchAll(/\$\s?([\d,]+(?:\.\d{2})?)/g)].map((m) => cents(m[1]));
+    const over = named.find((p) => p !== null && ceiling !== null && p > ceiling);
+
+    if (over === undefined) {
+      negGuard.className = "guard ok";
+      negGuard.innerHTML =
+        '<svg width="15" height="15"><use href="#i-check" /></svg>' +
+        "<div><strong>Under your $" + negCeiling.value + " ceiling.</strong> " +
+        "Every price in the draft is checked, including ones you type yourself.</div>";
+      negFill.disabled = false;
+    } else {
+      const dollars = (over / 100).toLocaleString("en-CA");
+      negGuard.className = "guard blocked";
+      negGuard.innerHTML =
+        '<svg width="15" height="15"><use href="#i-block" /></svg>' +
+        "<div><strong>Draft names $" + dollars + ", above your $" + negCeiling.value +
+        " ceiling.</strong> Nothing was filled. Lower the number or raise the ceiling &mdash; " +
+        "the check runs in code, so it can't be talked around.</div>";
+      negFill.disabled = true;
+    }
+  }
+
+  for (const btn of document.querySelectorAll("[data-negotiate]")) {
+    btn.addEventListener("click", () => {
+      const n = NEGOTIATIONS[btn.dataset.negotiate];
+      if (!n) return;
+      document.getElementById("negCar").textContent = n.car;
+      document.getElementById("negAsk").textContent = n.ask;
+      negTarget.value = n.target;
+      negCeiling.value = n.ceiling;
+      negDraft.value = n.body;
+      checkCeiling();
+      setNegotiate(true);
+    });
+  }
+
+  negDraft.addEventListener("input", checkCeiling);
+  negCeiling.addEventListener("input", checkCeiling);
+  document.getElementById("negBack").addEventListener("click", () => setNegotiate(false));
+  document.getElementById("negCopy").addEventListener("click", () => setNegotiate(false));
+  negFill.addEventListener("click", () => setNegotiate(false));
+  negDraft.value = NEGOTIATIONS.rav4.body;
+
+  // settings toggles
+  for (const opt of document.querySelectorAll(".opt[aria-pressed]")) {
+    opt.addEventListener("click", () => {
+      opt.setAttribute("aria-pressed", opt.getAttribute("aria-pressed") === "true" ? "false" : "true");
+    });
+  }
+  for (const sw of document.querySelectorAll(".switch[aria-pressed]")) {
+    sw.addEventListener("click", () => {
+      sw.setAttribute("aria-pressed", sw.getAttribute("aria-pressed") === "true" ? "false" : "true");
+    });
+  }
+</script>

@@ -3,4 +3,6 @@ export * from "./client";
 export * from "./listings";
 export * from "./tokens";
 export * from "./comps";
+export * from "./search";
+export * from "./research";
 export * from "./criteria";

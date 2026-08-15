@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoScout</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="head">
+      <svg class="mark" width="26" height="26" viewBox="0 0 18 18" aria-hidden="true">
+        <rect width="18" height="18" fill="var(--color-accent)" />
+        <circle cx="9" cy="9" r="6" fill="none" stroke="#ffffff" stroke-width="1.4" />
+        <line x1="9" y1="9" x2="9" y2="3" stroke="#ffffff" stroke-width="1.3" />
+        <line x1="9" y1="9" x2="14.71" y2="7.15" stroke="#ffffff" stroke-width="1.3" />
+        <line x1="9" y1="9" x2="12.53" y2="13.85" stroke="#ffffff" stroke-width="1.3" />
+        <line x1="9" y1="9" x2="5.47" y2="13.85" stroke="#ffffff" stroke-width="1.3" />
+        <line x1="9" y1="9" x2="3.29" y2="7.15" stroke="#ffffff" stroke-width="1.3" />
+        <circle cx="9" cy="9" r="1.4" fill="#ffffff" />
+      </svg>
+      <div class="head-text">
+        <h1>AutoScout</h1>
+        <p id="connection" class="conn"><i></i> <span>checking…</span></p>
+      </div>
+      <button id="settings" class="iconbtn" type="button" title="Search criteria">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.1" />
+          <path d="M19.9 15a1.6 1.6 0 0 0 .3 1.8 2 2 0 1 1-2.8 2.8 1.6 1.6 0 0 0-2.7 1.1 2 2 0 0 1-4 0 1.6 1.6 0 0 0-2.7-1.1 2 2 0 1 1-2.8-2.8A1.6 1.6 0 0 0 3.1 15a2 2 0 0 1 0-4 1.6 1.6 0 0 0 1.1-2.7 2 2 0 1 1 2.8-2.8A1.6 1.6 0 0 0 9.7 4.4a2 2 0 0 1 4 0 1.6 1.6 0 0 0 2.7 1.1 2 2 0 1 1 2.8 2.8A1.6 1.6 0 0 0 20.9 11a2 2 0 0 1 0 4z" />
+        </svg>
+      </button>
+    </header>
+
+    <dl class="session">
+      <div><dt>seen</dt><dd id="stat-seen">—</dd></div>
+      <div><dt>queued</dt><dd id="stat-queued">—</dd></div>
+      <div><dt>errors</dt><dd id="stat-errors">—</dd></div>
+    </dl>
+
+    <p id="error" class="error" hidden></p>
+
+    <div class="toolbar" role="group" aria-label="Filter listings">
+      <button class="chip" type="button" data-filter="fit" aria-pressed="true">
+        Fits criteria <span class="n" id="count-fit">0</span>
+      </button>
+      <button class="chip" type="button" data-filter="all" aria-pressed="false">
+        All <span class="n" id="count-all">0</span>
+      </button>
+      <label class="sort">
+        <span class="sr-only">Sort listings</span>
+        <select id="sort">
+          <option value="gap">Biggest gap</option>
+          <option value="newest">Newest first</option>
+          <option value="cheapest">Cheapest first</option>
+        </select>
+      </label>
+    </div>
+
+    <main id="list" class="list"></main>
+
+    <!-- What we set aside and why. Facebook files bulldozers, travel trailers,
+         buses and motorcycles under Vehicles, and a count is the difference
+         between "we filtered those out" and "the grid was empty". -->
+    <p id="set-aside" class="set-aside" hidden></p>
+
+
+    <!-- Settings live over the panel, not in a separate page: opening criteria
+         must never pull you off the Marketplace page you're shopping. -->
+    <section id="sheet" class="sheet" hidden aria-label="Search criteria">
+      <div class="sheet-head">
+        <button id="sheet-back" class="iconbtn" type="button" aria-label="Back to listings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </button>
+        <h2>Search criteria</h2>
+      </div>
+
+      <div class="sheet-body">
+        <p class="sheet-note">
+          Judged on this device, against listings already on screen. Nothing here
+          is sent anywhere.
+        </p>
+
+        <div class="field">
+          <span class="field-label">Budget</span>
+          <div class="pair">
+            <label class="input"><span>min $</span><input id="budgetMin" type="text" inputmode="numeric" aria-label="Minimum budget" /></label>
+            <label class="input"><span>max $</span><input id="budgetMax" type="text" inputmode="numeric" aria-label="Maximum budget" /></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Max mileage</span>
+          <label class="input"><input id="maxMileage" type="text" inputmode="numeric" aria-label="Maximum mileage" /><span>km</span></label>
+          <p class="hint">Blank means no limit. A listing whose mileage we can't read is never excluded.</p>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Model years</span>
+          <div class="pair">
+            <label class="input"><span>from</span><input id="yearMin" type="text" inputmode="numeric" aria-label="Earliest year" /></label>
+            <label class="input"><span>to</span><input id="yearMax" type="text" inputmode="numeric" placeholder="any" aria-label="Latest year" /></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Search from</span>
+          <div class="pair">
+            <label class="input"><input id="originCity" type="text" aria-label="Origin city" /></label>
+            <label class="input"><input id="radiusKm" type="text" inputmode="numeric" aria-label="Radius" /><span>km</span></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Transmission</span>
+          <div class="opts" data-group="transmission">
+            <button class="opt" type="button" data-value="automatic" aria-pressed="false">Automatic</button>
+            <button class="opt" type="button" data-value="manual" aria-pressed="false">Manual</button>
+          </div>
+          <!-- Said plainly because the old behaviour was to accept this setting
+               and silently ignore it: the grid carries no transmission field. -->
+          <p class="hint">
+            Not in Marketplace's grid data, so this can only be applied by
+            Facebook's own filter — use Search Facebook below.
+          </p>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Drivetrain</span>
+          <div class="opts" data-group="drivetrain">
+            <button class="opt" type="button" data-value="fwd" aria-pressed="false">FWD</button>
+            <button class="opt" type="button" data-value="rwd" aria-pressed="false">RWD</button>
+            <button class="opt" type="button" data-value="awd" aria-pressed="false">AWD</button>
+            <button class="opt" type="button" data-value="4wd" aria-pressed="false">4WD</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Fuel</span>
+          <div class="opts" data-group="fuel">
+            <button class="opt" type="button" data-value="gas" aria-pressed="false">Gas</button>
+            <button class="opt" type="button" data-value="diesel" aria-pressed="false">Diesel</button>
+            <button class="opt" type="button" data-value="hybrid" aria-pressed="false">Hybrid</button>
+            <button class="opt" type="button" data-value="electric" aria-pressed="false">Electric</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Never show me</span>
+          <div id="excludes" class="opts"></div>
+          <form id="exclude-add" class="exclude-add">
+            <label class="input"><input id="exclude-input" type="text" placeholder="salvage" aria-label="Add an exclusion" /></label>
+            <button class="btn-quiet" type="submit">Add</button>
+          </form>
+          <p class="hint">Matched against the listing title.</p>
+        </div>
+
+        <hr class="rule" />
+
+        <!-- Budget, years, mileage and transmission are all filters Facebook
+             runs server-side. Handing them over is the only way transmission
+             works at all, and it costs no extra requests: the page fetches one
+             narrower grid instead of a wide one. -->
+        <div class="field">
+          <span class="field-label">Search Facebook with these</span>
+          <button id="apply-marketplace" class="btn-quiet" type="button">
+            Open filtered Marketplace
+          </button>
+          <p class="hint" id="apply-note">
+            Opens Marketplace with your budget, years, mileage and transmission
+            already applied, so Facebook filters before we ever see the results.
+          </p>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Connection</span>
+          <label class="input"><input id="apiBaseUrl" type="url" aria-label="Server" /></label>
+          <label class="input"><input id="apiToken" type="password" autocomplete="off" placeholder="paste token" aria-label="Token" /></label>
+          <p class="hint">
+            From the web app's connect-extension page. AutoScout never asks for
+            your Facebook password and never signs in as you.
+          </p>
+        </div>
+      </div>
+
+      <div class="sheet-foot">
+        <button id="sheet-save" class="btn" type="button">Save</button>
+        <span id="sheet-saved" class="saved" hidden>Saved</span>
+      </div>
+    </section>
+
+    <p class="foot">
+      AutoScout only reads pages you open yourself. It never browses Marketplace
+      in the background.
+    </p>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

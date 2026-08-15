@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import type { EnrichedListing } from "@junkclaw/schema";
 import type { Database } from "./client";
-import { upsertListing } from "./listings";
+import { enrichListing, upsertListing } from "./listings";
 import { listingSnapshots, listings } from "./schema";
 import { createTestDatabase } from "./testing";
 
@@ -158,5 +158,98 @@ describe("upsertListing", () => {
       .from(listings)
       .where(eq(listings.externalId, "1057017393589564"));
     expect(rows[0]!.raw).toEqual({ id: "1057017393589564" });
+  });
+});
+
+describe("enrichListing", () => {
+  it("adds the description a grid sighting never had", async () => {
+    await upsertListing(db, listing({ externalId: "1" }));
+
+    await enrichListing(db, {
+      source: "marketplace",
+      externalId: "1",
+      description: "Rockers have some rust, patched last spring.",
+      isDealer: false,
+      mileageKm: null,
+      transmission: "unknown",
+      fuel: "unknown",
+      vin: null,
+    });
+
+    const [row] = await db.select().from(listings).where(eq(listings.externalId, "1"));
+    expect(row!.description).toContain("rust");
+  });
+
+  it("fills in spec fields the title could not give us", async () => {
+    await upsertListing(db, listing({ externalId: "1" }));
+
+    await enrichListing(db, {
+      source: "marketplace",
+      externalId: "1",
+      description: "x",
+      isDealer: true,
+      mileageKm: 241_393,
+      transmission: "automatic",
+      fuel: "gas",
+      vin: "1HGFA16576L081726",
+    });
+
+    const [row] = await db.select().from(listings).where(eq(listings.externalId, "1"));
+    expect(row!.mileageKm).toBe(241_393);
+    expect(row!.transmission).toBe("automatic");
+    expect(row!.fuel).toBe("gas");
+    expect(row!.vin).toBe("1HGFA16576L081726");
+    expect(row!.isDealer).toBe(true);
+  });
+
+  /*
+   * The 116-key detail variant carries a description and nothing else. Writing
+   * its unknowns over what the title already told us would lose information to
+   * an enrichment step.
+   */
+  it("does not overwrite known spec fields with unknowns", async () => {
+    await upsertListing(db, listing({ externalId: "1" }));
+    await enrichListing(db, {
+      source: "marketplace",
+      externalId: "1",
+      description: "x",
+      isDealer: false,
+      mileageKm: 200_000,
+      transmission: "manual",
+      fuel: "diesel",
+      vin: "1HGFA16576L081726",
+    });
+
+    await enrichListing(db, {
+      source: "marketplace",
+      externalId: "1",
+      description: "later sighting, sparse payload",
+      isDealer: false,
+      mileageKm: null,
+      transmission: "unknown",
+      fuel: "unknown",
+      vin: null,
+    });
+
+    const [row] = await db.select().from(listings).where(eq(listings.externalId, "1"));
+    expect(row!.mileageKm).toBe(200_000);
+    expect(row!.transmission).toBe("manual");
+    expect(row!.vin).toBe("1HGFA16576L081726");
+    expect(row!.description).toBe("later sighting, sparse payload");
+  });
+
+  // Detail pages can be opened for listings we never saw in a grid.
+  it("reports when there was no listing to enrich rather than creating a partial one", async () => {
+    const result = await enrichListing(db, {
+      source: "marketplace",
+      externalId: "never-seen",
+      description: "x",
+      isDealer: false,
+      mileageKm: null,
+      transmission: "unknown",
+      fuel: "unknown",
+      vin: null,
+    });
+    expect(result).toBe(false);
   });
 });

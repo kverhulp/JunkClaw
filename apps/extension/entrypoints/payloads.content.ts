@@ -1,4 +1,5 @@
 import { PAGE_MESSAGE_TAG, type PagePayloadMessage } from "@/lib/protocol";
+import { findListingEdges } from "@/lib/parse";
 import { parseResponseBody } from "@/lib/stream";
 
 /**
@@ -27,11 +28,21 @@ export default defineContentScript({
     "https://www.facebook.com/marketplace/item/*",
     "https://www.facebook.com/marketplace/*/vehicles*",
     "https://www.facebook.com/marketplace/search*",
+    // The Categories rail links to `/marketplace/<location-id>/search/`, which
+    // no pattern above reaches. Must mirror listings.content.ts: a forwarder
+    // that does not load has nothing to forward, and the two halves are only
+    // useful on pages where both are present.
+    "https://www.facebook.com/marketplace/*/search*",
   ],
   world: "MAIN",
   runAt: "document_start",
 
   main() {
+    // Liveness marker. A MAIN-world script that fails to inject looks exactly
+    // like one that injects and intercepts nothing, and the difference decides
+    // where you go looking. Cheap to set, and page-visible on purpose.
+    (window as unknown as Record<string, unknown>).__junkclawPayloads = "alive";
+
     const originalFetch = window.fetch;
 
     window.fetch = async function patchedFetch(...args: Parameters<typeof fetch>) {
@@ -92,28 +103,76 @@ export default defineContentScript({
  * Runs at document_start, so the script tags may not exist yet — hence the
  * retry. Cheap: it stops as soon as it finds a payload carrying listings.
  */
-function forwardEmbeddedPayloads(attempt = 0): void {
-  const scripts = document.querySelectorAll<HTMLScriptElement>(
+function forwardEmbeddedPayloads(): void {
+  for (const script of document.querySelectorAll<HTMLScriptElement>(
     'script[type="application/json"]',
-  );
+  )) {
+    readFeedScript(script, 0);
+  }
 
-  let found = false;
-  for (const script of scripts) {
-    const text = script.textContent;
-    if (!text || !text.includes("marketplace_feed_stories")) continue;
-    try {
-      forward("embedded:initial-html", JSON.parse(text));
-      found = true;
-    } catch {
-      // Not our shape.
+  // Facebook keeps appending feed scripts as you scroll — four of them on a
+  // lightly-scrolled grid, and it issues no network request we could catch
+  // instead. A bounded poll got this wrong twice over: it went blind for the
+  // first ~10 seconds of every page load, and once it found one payload it
+  // stopped watching, so every later batch was lost. Watching for the elements
+  // themselves is both cheaper and unbounded.
+  new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof HTMLScriptElement && node.type === "application/json") {
+          readFeedScript(node, 0);
+        }
+      }
     }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+}
+
+/**
+ * Reads one candidate script, retrying only while it still looks half-written.
+ *
+ * A script element is in the DOM before its contents finish streaming, and the
+ * feed payload is several hundred kilobytes — so "no marketplace_feed_stories
+ * in here" and "not all of it has arrived" are the same observation early on.
+ * The retry is bounded to the scripts that are actually incomplete; anything
+ * that parses is judged once and never looked at again.
+ */
+function readFeedScript(script: HTMLScriptElement, attempt: number): void {
+  if (seenScripts.has(script)) return;
+
+  const text = script.textContent;
+  const retry = (): void => {
+    if (attempt < 20) setTimeout(() => readFeedScript(script, attempt + 1), 250);
+  };
+
+  if (!text) return retry();
+
+  if (!text.includes("marketplace_feed_stories")) {
+    // A complete JSON document ends with its closing brace or bracket. If this
+    // one does and our key isn't in it, it never will be — stop watching it
+    // rather than parsing 121 unrelated scripts on a timer.
+    const last = text.trimEnd().slice(-1);
+    if (last === "}" || last === "]") seenScripts.add(script);
+    else retry();
+    return;
   }
 
-  // The document is still streaming; look again shortly.
-  if (!found && attempt < 20) {
-    setTimeout(() => forwardEmbeddedPayloads(attempt + 1), 250);
+  let payload: unknown;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    return retry();
   }
+  seenScripts.add(script);
+
+  // Facebook emits the key twice: one object carries `edges`, another carries
+  // only `debug_info`/`buy_location`, and the decoy lands first.
+  if (findListingEdges(payload) === null) return;
+
+  forward("embedded:initial-html", payload);
 }
+
+/** Scripts already handled, so re-polling a streaming document stays cheap. */
+const seenScripts = new WeakSet<HTMLScriptElement>();
 
 function requestUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;

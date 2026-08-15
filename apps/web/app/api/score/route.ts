@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  RiskFlagSchema,
   ScoreRequestSchema,
   type Analysis,
   type ScoreResponse,
@@ -16,6 +17,7 @@ import {
   getCriteria,
   getEnrichedListing,
   getListingHistory,
+  getRiskFlags,
 } from "@junkclaw/db";
 import { requireUser } from "@/lib/auth";
 import { handleError, parseBody } from "@/lib/respond";
@@ -51,9 +53,10 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const [{ comps }, history] = await Promise.all([
+      const [{ comps }, history, riskFlags] = await Promise.all([
         walkWideningLadder(listing, fetchComps),
         getListingHistory(database, listingId),
+        getRiskFlags(database, listingId),
       ]);
 
       analyses.push({
@@ -77,8 +80,9 @@ export async function POST(request: NextRequest) {
         daysOnMarket: history?.daysOnMarket ?? 0,
         priceDropCount: history?.priceDropCount ?? 0,
         comps,
-        // Risk flags come from the risk-analyst agent (M1).
-        riskFlags: [],
+        // Written once when a detail page supplied the description, not
+        // recomputed per request — see /api/enrich.
+        riskFlags: RiskFlagSchema.array().catch([]).parse(riskFlags),
         computedAt: new Date().toISOString(),
       });
     }

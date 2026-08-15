@@ -16,6 +16,9 @@ export default tseslint.config(
       "**/dist/**",
       "**/.next/**",
       "**/.output/**",
+      // The pickable copy of the extension build (see build:unpacked). Same
+      // artifacts as .output, so linting it means linting bundled output twice.
+      "apps/extension/build/**",
       "**/.wxt/**",
       // Design Components export: mockups and a vendored runtime, not app source.
       // It is the visual reference the web app is ported from, kept in-tree on

@@ -1,12 +1,12 @@
 {
-  "id": "e66bf9ff-c104-48b2-8441-ad44aba05f04",
-  "prevId": "fb4e1f24-7e90-4af2-9913-1e28a474a880",
+  "id": "3a6e9b9f-366f-42c2-a835-49967ce7df6d",
+  "prevId": "dad91080-42e5-4fd3-a5d4-54703ac28add",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.account": {
+    "junkclaw.account": {
       "name": "account",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -95,6 +95,7 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "user_id"
           ],
@@ -111,9 +112,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.analyses": {
+    "junkclaw.analyses": {
       "name": "analyses",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -219,6 +220,7 @@
           "name": "analyses_listing_id_listings_id_fk",
           "tableFrom": "analyses",
           "tableTo": "listings",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "listing_id"
           ],
@@ -232,6 +234,7 @@
           "name": "analyses_user_id_user_id_fk",
           "tableFrom": "analyses",
           "tableTo": "user",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "user_id"
           ],
@@ -248,9 +251,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.extension_tokens": {
+    "junkclaw.extension_tokens": {
       "name": "extension_tokens",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -319,6 +322,7 @@
           "name": "extension_tokens_user_id_user_id_fk",
           "tableFrom": "extension_tokens",
           "tableTo": "user",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "user_id"
           ],
@@ -343,9 +347,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.listing_snapshots": {
+    "junkclaw.listing_snapshots": {
       "name": "listing_snapshots",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -400,6 +404,7 @@
           "name": "listing_snapshots_listing_id_listings_id_fk",
           "tableFrom": "listing_snapshots",
           "tableTo": "listings",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "listing_id"
           ],
@@ -416,9 +421,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.listings": {
+    "junkclaw.listings": {
       "name": "listings",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -574,6 +579,19 @@
           "primaryKey": false,
           "notNull": true
         },
+        "risk_flags": {
+          "name": "risk_flags",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "risk_analysed_at": {
+          "name": "risk_analysed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "canonical_listing_id": {
           "name": "canonical_listing_id",
           "type": "text",
@@ -697,9 +715,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.negotiation_drafts": {
+    "junkclaw.negotiation_drafts": {
       "name": "negotiation_drafts",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -767,6 +785,7 @@
           "name": "negotiation_drafts_negotiation_id_negotiations_id_fk",
           "tableFrom": "negotiation_drafts",
           "tableTo": "negotiations",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "negotiation_id"
           ],
@@ -783,9 +802,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.negotiations": {
+    "junkclaw.negotiations": {
       "name": "negotiations",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -879,6 +898,7 @@
           "name": "negotiations_user_id_user_id_fk",
           "tableFrom": "negotiations",
           "tableTo": "user",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "user_id"
           ],
@@ -892,6 +912,7 @@
           "name": "negotiations_listing_id_listings_id_fk",
           "tableFrom": "negotiations",
           "tableTo": "listings",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "listing_id"
           ],
@@ -908,9 +929,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.parse_failures": {
+    "junkclaw.parse_failures": {
       "name": "parse_failures",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -980,9 +1001,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.saved_criteria": {
+    "junkclaw.saved_criteria": {
       "name": "saved_criteria",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -1016,6 +1037,7 @@
           "name": "saved_criteria_user_id_user_id_fk",
           "tableFrom": "saved_criteria",
           "tableTo": "user",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "user_id"
           ],
@@ -1040,9 +1062,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.session": {
+    "junkclaw.session": {
       "name": "session",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -1101,6 +1123,7 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
+          "schemaTo": "junkclaw",
           "columnsFrom": [
             "user_id"
           ],
@@ -1125,9 +1148,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.user": {
+    "junkclaw.user": {
       "name": "user",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -1191,9 +1214,100 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.verification": {
+    "junkclaw.vehicle_research": {
+      "name": "vehicle_research",
+      "schema": "junkclaw",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "make": {
+          "name": "make",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "avg_price_cents": {
+          "name": "avg_price_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "research": {
+          "name": "research",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sources": {
+          "name": "sources",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "researched_at": {
+          "name": "researched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "vehicle_research_key_idx": {
+          "name": "vehicle_research_key_idx",
+          "columns": [
+            {
+              "expression": "make",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "model",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "junkclaw.verification": {
       "name": "verification",
-      "schema": "",
+      "schema": "junkclaw",
       "columns": {
         "id": {
           "name": "id",
@@ -1244,7 +1358,9 @@
     }
   },
   "enums": {},
-  "schemas": {},
+  "schemas": {
+    "junkclaw": "junkclaw"
+  },
   "sequences": {},
   "roles": {},
   "policies": {},

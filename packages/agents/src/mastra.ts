@@ -20,7 +20,16 @@ export function createMastra(connectionString: string) {
   return new Mastra({
     agents,
     workflows,
-    storage: new PostgresStore({ connectionString }),
+    // `id` is required by @mastra/pg and names this store instance in Mastra's
+    // own bookkeeping — omitting it fails at first use, not at construction.
+    // Same database as the corpus, but Mastra's own bookkeeping gets its own
+    // schema — `public` in this project belongs to an earlier spike and our
+    // tables live in `junkclaw`.
+    storage: new PostgresStore({
+      id: "junkclaw",
+      connectionString,
+      schemaName: "junkclaw_mastra",
+    }),
     logger: new PinoLogger({ name: "junkclaw", level: "info" }),
   });
 }

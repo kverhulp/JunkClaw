@@ -88,11 +88,27 @@ export function buildCompSet(
 export const OUTLIER_MAD_THRESHOLD = 5;
 
 /**
- * Below this many candidates there is nothing to be robust against — with three
- * prices, any one of them could be "the outlier" and dropping it is a coin flip.
- * The comp set is already low-confidence at that size.
+ * Clean every bucket we would quote from — which means every bucket that
+ * reaches MIN_COMPS, not just the comfortable ones.
+ *
+ * This was 5, on the reasoning that three prices are too few to tell the
+ * outlier from the sample. The field findings measured the cost of that:
+ * exactly one bucket in a 106-listing corpus reached five, so in every bucket
+ * that could actually produce a number, nothing was ever cleaned — including a
+ * $90 Elantra sitting in a four-comp Elantra bucket.
+ *
+ * MAD copes at this size better than the old comment assumed. Four prices at
+ * $9,000/$11,000/$12,000/$13,000 give a median of $11,500 and a MAD of $1,000,
+ * so the bait deviates by 11.4 and goes. The genuine risk is the reverse — a
+ * real spread read as an outlier — and there the failure is safe: rejecting
+ * from a three-comp bucket drops it under MIN_COMPS, so the caller reports
+ * "not enough data" rather than a median built on a placeholder.
+ *
+ * Deliberately NOT a fixed price band. That was tried and removed: a bucket of
+ * $200 beaters and a bucket of $200,000 trucks are both entirely real, and only
+ * the bucket can say which of its own prices doesn't belong.
  */
-export const MIN_CANDIDATES_FOR_OUTLIER_REJECTION = 5;
+export const MIN_CANDIDATES_FOR_OUTLIER_REJECTION = MIN_COMPS;
 
 export function medianAbsoluteDeviation(values: number[]): number {
   if (values.length === 0) return 0;
@@ -140,6 +156,32 @@ export const WIDENING_LADDER: WideningRung[] = [
   { yearBand: 1, radiusKm: 250, ignoreTrim: true, label: "±1 year, any trim, within 250 km" },
   { yearBand: 2, radiusKm: 500, ignoreTrim: true, label: "±2 years, any trim, Maritime-wide" },
 ];
+
+/**
+ * How a rung reads to a human.
+ *
+ * `wideningNote` is rendered verbatim in the panel ("Comp set widened: ±1 year,
+ * any trim, within 250 km"), so a rung an agent assembles by hand has to be
+ * worded the same way as one the deterministic ladder walked. A test asserts
+ * every canonical rung describes itself back to its own label.
+ */
+export function describeRung(rung: WideningRung): string {
+  const parts: string[] = [];
+
+  if (rung.yearBand === 0) {
+    // The tightest rung is the only one that promises trim, so it says so.
+    parts.push(rung.ignoreTrim ? "same year" : "same year and trim");
+  } else {
+    parts.push(`\u00b1${rung.yearBand} ${rung.yearBand === 1 ? "year" : "years"}`);
+  }
+
+  if (rung.ignoreTrim) parts.push("any trim");
+
+  // Beyond the province, distance stops being the useful description.
+  parts.push(rung.radiusKm >= 500 ? "Maritime-wide" : `within ${rung.radiusKm} km`);
+
+  return parts.join(", ");
+}
 
 /** Injected so the ladder is testable without a database. */
 export type CompFetcher = (

@@ -112,7 +112,7 @@ describe("saved criteria", () => {
   it("falls back to defaults when the stored shape is stale", async () => {
     await setCriteria(db, userId, { ...DEFAULT_CRITERIA, radiusKm: 50 });
     await db.execute(
-      `UPDATE saved_criteria SET criteria = '{"budgetMaxCents": 100}'::jsonb`,
+      `UPDATE junkclaw.saved_criteria SET criteria = '{"budgetMaxCents": 100}'::jsonb`,
     );
     expect(await getCriteria(db, userId)).toEqual(DEFAULT_CRITERIA);
   });

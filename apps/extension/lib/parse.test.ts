@@ -76,8 +76,49 @@ describe("parseListings", () => {
     }
   });
 
-  it("throws on an unrecognised shape so parse-sentinel has something to act on", () => {
-    expect(() => parseListings({ data: { viewer: {} } })).toThrow(PayloadShapeError);
+  // The alarm has to mean something. Facebook fires dozens of unrelated
+  // GraphQL calls per page and we see every one of them, so "no feed in this
+  // payload" must be silent or the signal drowns.
+  it("stays silent on a payload that simply isn't a listing feed", () => {
+    expect(parseListings({ data: { viewer: {} } })).toEqual([]);
+    expect(parseListings({ hello: "world" })).toEqual([]);
+  });
+
+  // Observed live 2026-08-14: Facebook emits this alongside the real feed.
+  it("stays silent on the debug_info twin that carries no edges", () => {
+    const twin = {
+      data: { viewer: { marketplace_feed_stories: { debug_info: {}, buy_location: {} } } },
+    };
+    expect(parseListings(twin)).toEqual([]);
+  });
+
+  it("stays silent on an empty feed, which is just the end of the results", () => {
+    const empty = { data: { viewer: { marketplace_feed_stories: { edges: [] } } } };
+    expect(parseListings(empty)).toEqual([]);
+  });
+
+  // Ads share the feed and have no node.listing, so they are not evidence.
+  it("stays silent on a feed of nothing but ads", () => {
+    const ads = {
+      data: { viewer: { marketplace_feed_stories: { edges: [{ node: {} }, { node: {} }] } } },
+    };
+    expect(parseListings(ads)).toEqual([]);
+  });
+
+  it("throws when real listings are present but none parse — the actual regression", () => {
+    const broken = {
+      data: {
+        viewer: {
+          marketplace_feed_stories: {
+            edges: [
+              { node: { listing: { id: "1", renamed_price_field: "900" } } },
+              { node: { listing: { id: "2", renamed_price_field: "800" } } },
+            ],
+          },
+        },
+      },
+    };
+    expect(() => parseListings(broken)).toThrow(PayloadShapeError);
   });
 });
 
@@ -223,5 +264,63 @@ describe("photos", () => {
       const result = ListingFactsSchema.safeParse({ ...listing, urlHash: "a".repeat(64) });
       expect(result.success, JSON.stringify(result.error?.issues)).toBe(true);
     }
+  });
+});
+
+/**
+ * Facebook's Categories rail links to `/marketplace/<location-id>/search/`, not
+ * to the category grid, and that surface returns the same listings under a
+ * different container: `marketplace_search.feed_units` rather than
+ * `marketplace_feed_stories`. Captured live — the responses are ~64KB of
+ * `/api/graphql/` with `marketplace_feed_stories` absent entirely.
+ *
+ * Before this, such a page parsed to zero listings while showing 26 cars.
+ */
+describe("search payloads, which use a different container", () => {
+  const edge = (id: string, title: string) => ({
+    node: {
+      listing: {
+        id,
+        marketplace_listing_title: title,
+        listing_price: { amount: "6500.00" },
+        is_live: true,
+        location: { reverse_geocode: { city: "Charlottetown", state: "PE" } },
+      },
+    },
+  });
+
+  const searchPayload = {
+    data: {
+      marketplace_search: {
+        feed_units: {
+          edges: [edge("1", "2014 Honda Civic"), edge("2", "2012 Mazda mazda3")],
+        },
+      },
+    },
+  };
+
+  it("finds edges under marketplace_search.feed_units", () => {
+    expect(findListingEdges(searchPayload)).toHaveLength(2);
+  });
+
+  it("parses them into listings", () => {
+    expect(parseListings(searchPayload).map((l) => l.rawTitle)).toEqual([
+      "2014 Honda Civic",
+      "2012 Mazda mazda3",
+    ]);
+  });
+
+  it("prefers the real feed over a stray single-listing strip", () => {
+    const withDecoy = {
+      data: {
+        related_items: { edges: [edge("9", "2001 Ford Focus")] },
+        marketplace_search: { feed_units: searchPayload.data.marketplace_search.feed_units },
+      },
+    };
+    expect(findListingEdges(withDecoy)).toHaveLength(2);
+  });
+
+  it("still returns null when nothing carries a listing", () => {
+    expect(findListingEdges({ data: { marketplace_search: { feed_units: { edges: [] } } } })).toBeNull();
   });
 });

@@ -26,6 +26,11 @@ through `npx --yes pnpm@10`. Install it properly if you get tired of the prefix.
 - **Guards only** (fast, run before pushing): `npx --yes pnpm@10 guards`
 - **Extension:** `cd apps/extension && npx --yes pnpm@10 build` → loads from
   `.output/chrome-mv3` via `chrome://extensions` → Load unpacked. Dev: `pnpm dev:ext`.
+  **Use `build:unpacked` when you're going to load it by hand**: it builds and
+  copies to `apps/extension/build/`, which — unlike `.output` — is not a
+  dot-directory macOS hides in the folder picker. A copy of the build parked
+  somewhere pickable has already gone stale once and cost an evening, because
+  Chrome keeps loading whatever path it was given.
 - **Web:** `cd apps/web && npx --yes pnpm@10 build`, or `pnpm dev:web` (:3000).
 - **DB:** `pnpm db:generate` then `pnpm db:migrate` (needs `DATABASE_URL`).
 - **Extension token** (M0, until the connect-extension page exists):
@@ -117,6 +122,12 @@ order encodes dependencies that aren't obvious from the code.
 
 ## Conventions
 
+- **The product is called AutoScout. The code is called `junkclaw`.** The
+  rebrand changed **visible copy only** — manifest name, page titles, headings,
+  body text. Package names (`@junkclaw/*`), directories, the repo, DOM markers
+  like `data-junkclaw-badge`, and the `AutoScout/JunkClaw *.dc.html` mockup
+  filenames all keep the working name deliberately. Renaming them is churn with
+  a migration cost and no user-visible benefit; don't "fix" the inconsistency.
 - **Commits:** Conventional Commits — lowercase `type: subject` (`feat:`, `fix:`,
   `docs:`, `chore:`, `refactor:`, `test:`). One logical change per commit;
   generated artifacts go in the *same* commit as the change that produced them.

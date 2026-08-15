@@ -173,18 +173,10 @@ export function useDashboard() {
   return useMockQuery(
     () =>
       delay({
-        savedSearches: [
-          { id: "sv_1", name: "Civic under $8k", supplier: "Marketplace", newSinceLastVisit: 3 },
-          { id: "sv_2", name: "AWD wagon, under 200k km", supplier: "Marketplace", newSinceLastVisit: 0 },
-          { id: "sv_3", name: "Half-ton, 4WD, NB only", supplier: "Marketplace", newSinceLastVisit: 7 },
-        ],
         priceDrops: MOCK_LISTINGS.filter((listing) => listing.previousPriceCents !== null),
         recentlyViewed: MOCK_LISTINGS.slice(0, 4),
       }),
     [],
-    (data) =>
-      data.savedSearches.length === 0 &&
-      data.priceDrops.length === 0 &&
-      data.recentlyViewed.length === 0,
+    (data) => data.priceDrops.length === 0 && data.recentlyViewed.length === 0,
   );
 }

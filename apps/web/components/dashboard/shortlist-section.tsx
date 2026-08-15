@@ -43,7 +43,7 @@ export function ShortlistSection() {
         ) : listings.length === 0 ? (
           <EmptyState
             title="Nothing shortlisted yet"
-            body="Open a listing in the catalogue and choose Add to dashboard. Shortlisted cars are where negotiations start."
+            body="Open a listing in the catalogue and choose Shortlist. Shortlisted cars are where negotiations start."
           />
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

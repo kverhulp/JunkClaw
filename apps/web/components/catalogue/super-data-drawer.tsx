@@ -88,7 +88,7 @@ export function CarSuperDataDrawer({
             </>
           ) : (
             <Button variant="primary" onClick={() => shortlist.add(listing.id)}>
-              Add to dashboard
+              Shortlist
             </Button>
           )}
         </>

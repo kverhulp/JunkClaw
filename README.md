@@ -1,15 +1,17 @@
 # JunkClaw
 
 A browser extension that rides along while you shop for a used car on Facebook
-Marketplace. It scores every listing against real comparable asking prices, flags
-the risks, and drafts the message you send the seller — with spending limits
-enforced in code, not in a prompt.
+Marketplace. It scores every listing against comparable asking prices, flags the
+risks, and hands you the questions to ask the seller — what similar ones ask,
+what is documented to fail on that generation, and what service the odometer
+says is overdue.
 
-Not another listings site. The value is **triage and leverage**: which three of
-two hundred listings are worth your evening, and what to say when you contact
-them.
+Not another listings site. The value is **triage and preparation**: which three
+of two hundred listings are worth your time, and what to ask when you get there.
 
-*Working name. "JunkClaw" is the directory, not a decision.*
+It writes no messages, sends none, and never names a price to offer.
+
+*The product is AutoScout. "JunkClaw" is the repo, not the name.*
 
 ## Current phase
 

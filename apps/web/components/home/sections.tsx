@@ -62,7 +62,7 @@ export function Hero() {
   return (
     <section className="mx-auto max-w-5xl px-6 pb-20 pt-10">
       <Reveal>
-        <h1 className="mb-8 text-[34px]">Two hundred listings. Three worth your evening.</h1>
+        <h1 className="mb-8 text-[34px]">Two hundred listings. Three worth your time.</h1>
       </Reveal>
 
       <div className="grid gap-8 md:grid-cols-[minmax(0,480px)_1fr]">

@@ -225,3 +225,110 @@ export async function getRiskFlags(db: Database, listingId: string): Promise<unk
   const flags = rows[0]?.riskFlags;
   return Array.isArray(flags) ? flags : [];
 }
+
+/**
+ * The photo we hold for a listing, and whether it has already been read.
+ *
+ * Returns the URL rather than the bytes: the caller fetches it, because the
+ * signature on these links expires and only the caller knows whether it is
+ * about to spend a model call on a dead one.
+ */
+export async function getListingPhoto(
+  db: Database,
+  source: string,
+  externalId: string,
+): Promise<{ listingId: string; url: string | null; analysed: boolean } | null> {
+  const rows = await db
+    .select({
+      id: listings.id,
+      photoUrls: listings.photoUrls,
+      photoAnalysedAt: listings.photoAnalysedAt,
+    })
+    .from(listings)
+    .where(and(eq(listings.source, source), eq(listings.externalId, externalId)))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  const urls = Array.isArray(row.photoUrls) ? row.photoUrls : [];
+  const first = urls.find((u): u is string => typeof u === "string" && u.length > 0) ?? null;
+
+  return { listingId: row.id, url: first, analysed: row.photoAnalysedAt !== null };
+}
+
+export async function savePhotoObservations(
+  db: Database,
+  source: string,
+  externalId: string,
+  observations: unknown[],
+  summary: string,
+): Promise<void> {
+  await db
+    .update(listings)
+    .set({
+      photoObservations: observations,
+      photoSummary: summary,
+      photoAnalysedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(listings.source, source), eq(listings.externalId, externalId)));
+}
+
+/**
+ * Everything a negotiation draft needs about one listing, in a single read.
+ *
+ * Assembled server-side from the corpus rather than accepted from the caller:
+ * the panel holds most of this already, but a draft is a thing the user will
+ * put their name to, and its facts should come from the record rather than from
+ * whatever a request body claims.
+ *
+ * Seller identity is absent, as everywhere — a message to a stranger about
+ * their car needs the car, not the person.
+ */
+export async function getListingForDraft(
+  db: Database,
+  source: string,
+  externalId: string,
+): Promise<{
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  priceCents: number;
+  mileageKm: number | null;
+  city: string;
+  description: string;
+  isDealer: boolean;
+  vin: string | null;
+  riskFlags: unknown[];
+  photoObservations: unknown[];
+  photoSummary: string | null;
+} | null> {
+  const rows = await db
+    .select({
+      make: listings.make,
+      model: listings.model,
+      year: listings.year,
+      priceCents: listings.priceCents,
+      mileageKm: listings.mileageKm,
+      city: listings.city,
+      description: listings.description,
+      isDealer: listings.isDealer,
+      vin: listings.vin,
+      riskFlags: listings.riskFlags,
+      photoObservations: listings.photoObservations,
+      photoSummary: listings.photoSummary,
+    })
+    .from(listings)
+    .where(and(eq(listings.source, source), eq(listings.externalId, externalId)))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    ...row,
+    riskFlags: Array.isArray(row.riskFlags) ? row.riskFlags : [],
+    photoObservations: Array.isArray(row.photoObservations) ? row.photoObservations : [],
+  };
+}

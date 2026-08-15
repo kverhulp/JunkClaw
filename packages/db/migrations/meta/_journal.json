@@ -15,6 +15,13 @@
       "when": 1786788765708,
       "tag": "0001_bumpy_gorgon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786797110427,
+      "tag": "0002_nebulous_pride",
+      "breakpoints": true
     }
   ]
 }

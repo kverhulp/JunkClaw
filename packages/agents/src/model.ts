@@ -27,3 +27,14 @@ export const EVAL_MODEL = process.env.JUNKCLAW_EVAL_MODEL ?? "anthropic/claude-o
  * is the one model id that is not freely swappable.
  */
 export const RESEARCH_MODEL = process.env.JUNKCLAW_RESEARCH_MODEL ?? "google/gemini-flash-latest";
+
+/**
+ * Vision. Reads the listing photo we already hold, which is the one rich signal
+ * that costs no Marketplace request — the image lives on a CDN and needs no
+ * session, unlike every route to the description.
+ *
+ * Separate from EXTRACTION_MODEL because the constraint is different: this one
+ * must actually accept images, so it is not freely swappable for any text model
+ * the gateway happens to route.
+ */
+export const VISION_MODEL = process.env.JUNKCLAW_VISION_MODEL ?? "google/gemini-flash-latest";

@@ -169,6 +169,25 @@ export const listings = junkclaw.table(
     riskFlags: jsonb("risk_flags").notNull().default([]),
     riskAnalysedAt: timestamp("risk_analysed_at", { withTimezone: true }),
 
+    /**
+     * What the listing photo shows, kept in its own column rather than merged
+     * into `risk_flags`.
+     *
+     * The two are different kinds of claim. A risk flag quotes the seller, so
+     * the user can check it against the listing. A photo observation is our
+     * reading of an image — it points at the picture instead, and the panel has
+     * to attribute them differently. Merged into one array, "the seller says it
+     * has a rebuilt title" and "we think we see rust" would render identically,
+     * and one of those is a fact while the other is our opinion.
+     *
+     * Written once, and soon: the fbcdn URLs are signed with roughly a four-day
+     * expiry, so a listing not analysed while its link is live cannot be
+     * analysed later at all.
+     */
+    photoObservations: jsonb("photo_observations").notNull().default([]),
+    photoSummary: text("photo_summary"),
+    photoAnalysedAt: timestamp("photo_analysed_at", { withTimezone: true }),
+
     /** Set when dedup folds this into another listing (relist, cross-post). */
     canonicalListingId: text("canonical_listing_id"),
 

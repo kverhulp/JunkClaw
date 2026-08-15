@@ -98,3 +98,42 @@ export const VehicleResearchSchema = z.strictObject({
   stored: z.boolean(),
 });
 export type VehicleResearch = z.infer<typeof VehicleResearchSchema>;
+
+/**
+ * What a photo shows, which is a different kind of claim from what a seller wrote.
+ *
+ * Kept apart from `RiskFlag` deliberately, and the difference is the evidence
+ * rule rather than the vocabulary. A `RiskFlag` carries the seller's own
+ * sentence: the user can read the listing and see we did not invent it. A photo
+ * observation carries our description of an image, which is our assertion, not
+ * theirs — so it points at the photo instead, and the panel must attribute the
+ * two differently. "The seller says it has a rebuilt title" and "we think we see
+ * rust on the rockers" are not the same sentence and must never render as one.
+ *
+ * Note what is absent: `salvage_or_rebuilt`, `accident_history`, `title_issue`,
+ * `no_maintenance_records`. Those are *disclosed history* — they exist because
+ * someone typed them, and a photograph cannot show a title brand. A model asked
+ * to spot them in an image would produce exactly the confident, uncheckable
+ * warning this codebase refuses to ship.
+ */
+export const PhotoObservationKindSchema = z.enum([
+  "rust",
+  "body_damage",
+  "mismatched_paint",
+  "worn_tires",
+  "aftermarket_wheels",
+  "dealer_lot",
+  "not_a_car",
+  "photo_unusable",
+]);
+export type PhotoObservationKind = z.infer<typeof PhotoObservationKindSchema>;
+
+export const PhotoObservationSchema = z.strictObject({
+  kind: PhotoObservationKindSchema,
+  /** Where in the image, so the user can look at the same thing we did. */
+  where: z.string().min(1).max(200),
+  /** What is visible. Our description of the image, never inferred history. */
+  observation: z.string().min(1).max(500),
+  confidence: z.enum(["low", "medium", "high"]),
+});
+export type PhotoObservation = z.infer<typeof PhotoObservationSchema>;

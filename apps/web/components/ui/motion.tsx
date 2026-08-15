@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AnimatePresence,
   motion,
   useInView,
   useReducedMotion,
@@ -218,11 +217,17 @@ export function OdometerNumber({
 /* ------------------------------------------------------------- Crossfade */
 
 /**
- * Swaps skeleton for content without the hard cut.
+ * Fades content in when the view's state changes.
  *
  * Keyed on a state string rather than on the data, so React does not reuse the
  * skeleton's DOM for the real thing — that reuse is what produces the flicker
  * this exists to remove.
+ *
+ * Deliberately *not* `AnimatePresence mode="wait"`. That waits for the outgoing
+ * child's exit animation before mounting the incoming one, and when the exit
+ * never completed the ready content never mounted at all — the catalogue sat on
+ * its skeleton forever. A fade-in on a remount cannot deadlock: there is no
+ * second element whose departure has to be observed first.
  */
 export function Crossfade({
   state,
@@ -236,17 +241,14 @@ export function Crossfade({
   if (reduced) return <>{children}</>;
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={state}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.15, ease: "easeOut" }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={state}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+    >
+      {children}
+    </motion.div>
   );
 }
 

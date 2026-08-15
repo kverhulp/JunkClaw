@@ -18,6 +18,7 @@ import {
   Th,
 } from "../../components/ui/primitives";
 import { Crossfade } from "../../components/ui/motion";
+import { ShortlistSection } from "../../components/dashboard/shortlist-section";
 import { useDashboard } from "../../lib/data";
 import { money, signedMoney, titleCase } from "../../lib/format";
 import { supplierLabel, type CatalogueListing } from "../../mocks/vehicles";
@@ -32,6 +33,8 @@ export default function DashboardPage() {
       description="Saved searches, price movement, and what you looked at recently."
       actions={<Button variant="primary" size="sm">New saved search</Button>}
     >
+      <ShortlistSection />
+
       <Crossfade state={isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready"}>
       {isLoading ? (
         <DashboardSkeleton />

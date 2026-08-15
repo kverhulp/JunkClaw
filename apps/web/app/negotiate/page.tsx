@@ -5,9 +5,9 @@ import { SiteFooter, SiteHeader } from "../../components/layout/site-chrome";
 export const metadata = { title: "Negotiate — AutoScout" };
 
 /**
- * Negotiation is per-listing, so there is nothing to show without one. Rather
- * than inventing a demo car, this points at where a negotiation actually
- * starts.
+ * The script is per-listing — it is built from that car's comps, mileage, and
+ * generation — so there is nothing to show without one. Rather than inventing a
+ * demo car, this points at where prep actually starts.
  */
 export default function NegotiateIndex() {
   return (
@@ -16,9 +16,9 @@ export default function NegotiateIndex() {
       <main className="mx-auto max-w-2xl px-6 py-24">
         <h1 className="text-[32px]">Negotiate</h1>
         <p className="mt-3 text-[16px] text-text-secondary">
-          Negotiations open from a single car. Shortlist one from the catalogue, then start it
-          from your dashboard — that screen shows the spending ceiling the draft is checked
-          against.
+          Prep is built per car. Shortlist one from the catalogue, then open it from your
+          dashboard — you get what similar ones are asking, what is known to go wrong on that
+          generation, and the questions to ask before you drive out.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-2">

@@ -35,7 +35,7 @@ const AGENTS = [
   },
   {
     label: "NEGOTIATION",
-    copy: "Drafts the message you send. You approve every one, and the ceiling is enforced in code.",
+    copy: "Turns the comps, the known faults, and the service gaps into the questions to ask the seller.",
   },
   {
     label: "CRITERIA INTERPRETER",
@@ -53,8 +53,8 @@ const FEATURES = [
     copy: '"Not enough data" is a real answer. It\'s never shown as $0.',
   },
   {
-    title: "You approve every message",
-    copy: "A spending ceiling enforced in code, not left to a prompt.",
+    title: "Questions, not offers",
+    copy: "It tells you what to ask. It never tells you what to pay, and it messages nobody.",
   },
 ];
 
@@ -62,7 +62,7 @@ export function Hero() {
   return (
     <section className="mx-auto max-w-5xl px-6 pb-20 pt-10">
       <Reveal>
-        <h1 className="mb-8 text-[34px]">Two hundred listings. Three worth your evening.</h1>
+        <h1 className="mb-8 text-[34px]">Two hundred listings. Three worth your time.</h1>
       </Reveal>
 
       <div className="grid gap-8 md:grid-cols-[minmax(0,480px)_1fr]">
@@ -71,8 +71,8 @@ export function Hero() {
             <p className="mb-6 max-w-[52ch] text-[15px] leading-relaxed text-text-secondary">
               AutoScout rides along while you shop for a used car on Facebook Marketplace. It
               scores every listing against real comparable asking prices, flags the risks, and
-              drafts the message you send the seller — with spending limits enforced in code, not
-              in a prompt.
+              writes you the script for the seller — what similar ones ask, what breaks on that
+              generation, and what to ask before you drive out.
             </p>
           </Reveal>
 
@@ -150,8 +150,8 @@ const STEPS = [
     copy: "Browse Marketplace normally. Every listing you pass is scored against similar asks nearby.",
   },
   {
-    title: "Shortlist, then negotiate",
-    copy: "Send the good ones to your dashboard, and open a draft with the spending ceiling in view.",
+    title: "Shortlist, then prep",
+    copy: "Send the good ones to your dashboard, and open the script before you contact anyone.",
   },
 ];
 

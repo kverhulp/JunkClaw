@@ -11,8 +11,8 @@ import { listingById } from "../../mocks/vehicles";
  * The cars pulled out of the catalogue to act on.
  *
  * This is the hinge of the flow: the catalogue is for browsing, the dashboard
- * is the shortlist, and negotiation opens from here — one car at a time, on a
- * screen that shows the spending ceiling.
+ * is the shortlist, and prep opens from here — one car at a time, on a screen
+ * that has room for the whole script.
  */
 export function ShortlistSection() {
   const { ids, ready, remove } = useShortlist();
@@ -43,7 +43,7 @@ export function ShortlistSection() {
         ) : listings.length === 0 ? (
           <EmptyState
             title="Nothing shortlisted yet"
-            body="Open a listing in the catalogue and choose Shortlist. Shortlisted cars are where negotiations start."
+            body="Open a listing in the catalogue and choose Shortlist. Shortlisted cars are where prep starts."
           />
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

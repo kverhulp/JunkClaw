@@ -64,10 +64,10 @@ export function CarSuperDataDrawer({
       onClose={onClose}
       title={title}
       /**
-       * Adds to the dashboard rather than drafting here. Drafting is a
-       * negotiation, and a negotiation needs its own screen with the spending
-       * ceiling in view — offering it as a footer button in a browsing drawer
-       * makes the most consequential action in the product the most casual one.
+       * Shortlists rather than opening prep here. The script is a page of
+       * questions grounded in comps, mileage, and known faults — squeezing it
+       * into a browsing drawer would mean showing a fraction of it, and a
+       * fraction of a checklist is the part you forget to ask.
        */
       footer={
         <>
@@ -83,7 +83,7 @@ export function CarSuperDataDrawer({
                 href={`/negotiate/${listing.id}`}
                 className="inline-flex min-h-9 items-center gap-1.5 border border-transparent bg-accent px-3.5 text-[14px] font-extrabold text-bg transition-colors duration-150 ease-out hover:bg-accent-600"
               >
-                Open negotiation
+                Open prep
               </Link>
             </>
           ) : (

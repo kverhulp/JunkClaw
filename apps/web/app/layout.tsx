@@ -18,7 +18,7 @@ const archivo = Archivo({
 export const metadata: Metadata = {
   title: "AutoScout — used-car listing triage",
   description:
-    "Scores Facebook Marketplace listings against similar asking prices nearby, flags the risks, and drafts the message you send the seller.",
+    "Scores Facebook Marketplace listings against similar asking prices nearby, flags the risks, and writes you the questions to ask the seller.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

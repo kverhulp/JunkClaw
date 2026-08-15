@@ -85,8 +85,9 @@ today, and the run says that shape does not survive contact with PEI-sized data.
 
 1. **Depreciation + mileage adjustment.** Turns 17% coverage into most of the
    corpus and fixes the F-150 problem. Deterministic, no model in the loop.
-2. **Kijiji / AutoTrader collector.** No longer optional — the only way to reach
-   the density a stable curve fit needs.
+2. **More Marketplace collection.** With other marketplaces out of scope, density
+   can only come from browsing more. That makes the curve fit load-bearing rather
+   than optional.
 3. **Keep collecting.** Every session improves the fit.
 
 **[W]** **I would hold M1 (the overlay).** Showing a $12,450 saving that isn't
@@ -95,10 +96,61 @@ get. Valuation quality gates the UI, not the other way round.
 
 ---
 
-## Open decisions — 2026-08-14
+## Settled — 2026-08-14
 
-**[W]** **Kijiji/AutoTrader collection.** A different posture from the extension:
-server-side, on other sites' terms. Needs a deliberate call, not a drift into it.
+**[W]** **Kijiji and AutoTrader are out of scope.** One source: Facebook
+Marketplace, read through the user's own session by the extension. The schema's
+`Source` enum still lists the other two, because that is a data contract and
+widening it later is cheaper than migrating rows — but nothing in the product
+claims them, and the site no longer advertises three sources when one collects.
+
+The consequence is not free: density can now only come from browsing more
+Marketplace, which makes the depreciation curve load-bearing rather than one
+option among two.
+
+**[W]** **The product is AutoScout.** JunkClaw remains the repo name; only
+visible copy changed.
+
+---
+
+## Settled — 2026-08-15
+
+**[W]** **Negotiation produces a script, not a message.** The feature no longer
+drafts outreach and no longer proposes a number. It produces, per car:
+
+1. Where the price sits against **similar asks** — median, the 25th-to-75th
+   range, days listed, price drops. Silent when the comp set is insufficient.
+2. **Documented faults for that generation** — the cam phaser rattle on a 5.0
+   F-150, the N20 chain guides, the Cruze water outlet. Specific enough to check
+   on a test drive.
+3. **Service the odometer implies** — interval items that have come due at least
+   once at this mileage.
+4. The **questions** those three imply, each carrying why it is being asked.
+
+**[W]** Why this is better and not just smaller. The draft flow needed a
+spending ceiling *because* it composed an offer — we built a guardrail for a
+risk we had introduced ourselves. Handing over the questions keeps the useful
+half and drops the liability: no message is written, none is sent, no number is
+suggested, and the "information not advice" line stops being something we have
+to defend and starts being structurally true.
+
+**[W]** It also survives thin comps far better. A draft has to say *something*
+about price; a question list can ask "how did you land on your price?" and be
+complete. On the F-150 — the car that produced the fake $12,450 saving — the
+script now names no figure at all and still runs to twelve questions.
+
+**[W]** **What this leaves stranded.** `POST /api/negotiate`, the
+`negotiateWorkflow` in `packages/agents`, `NegotiationLimits` /
+`DraftMessageSchema` in `packages/schema`, and the ceiling check in
+`packages/core/src/limits.ts` all still implement the draft-and-approve design.
+Nothing in the frontend calls them. They are M2 work that now needs rewriting
+rather than finishing, and someone should decide whether the ceiling concept
+survives at all — with no offer being made, there is nothing left for it to
+gate.
+
+---
+
+## Open decisions — 2026-08-14
 
 **[W]** **Powersports.** Motorcycles and ATVs are being collected and separated
 now. Whether they are in scope as a product is unanswered — they need their own
@@ -109,7 +161,12 @@ depreciation, or mileage expectations.
 change needs explicit, unmissable user consent — the account that gets banned is
 the user's, not ours.
 
-**[W]** **Product name.** "JunkClaw" is the repo, not a decision.
+**[W]** **The photo contract.** `ListingFacts` is a `strictObject` guarding the
+PII boundary and carries no image field at all, but the catalogue is specified
+as an image grid. The frontend currently holds `photos` in a view model of its
+own rather than pretending the contract supports it. Either add
+`vehiclePhotoUrls` to the schema deliberately, or drop imagery from the grid —
+but not by accident.
 
 ---
 

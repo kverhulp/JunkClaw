@@ -106,8 +106,16 @@ fi
 # while they aren't looking is the behaviour Meta's enforcement targets, and the
 # account that gets banned is the user's own. If polling ever ships it is
 # opt-in with explicit consent — and this guard gets updated deliberately.
+#
+# A timer that drives UI and touches no network is not that risk, but it is
+# indistinguishable from it by grep. Rather than exempt a whole directory — the
+# side panel holds the API token, so it is the last place to stop looking — the
+# exemption is per call site: put `guards:allow-timer` on the same line, with a
+# comment saying why. Every new timer still has to argue for itself, and the
+# marker makes each one greppable.
 # ---------------------------------------------------------------------------
-polling=$(grep -rnE '(setInterval|alarms\.create)' apps/extension/entrypoints apps/extension/lib 2>/dev/null || true)
+polling=$(grep -rnE '(setInterval|alarms\.create)' apps/extension/entrypoints apps/extension/lib 2>/dev/null \
+  | grep -v 'guards:allow-timer' || true)
 if [ -n "$polling" ]; then
   fail "the extension schedules recurring work" \
     "Background polling of Marketplace risks a ban on the USER's Facebook account." \

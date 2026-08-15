@@ -26,8 +26,16 @@ export interface Headline {
  * The wording is "asks", not "market value". We hold what sellers ask, not what
  * cars sold for, and blurring that is how the product loses trust permanently.
  */
-export function dealHeadline(analysis: Analysis | null): Headline {
-  if (analysis === null) return { tone: "pending", text: "Scoring…" };
+export function dealHeadline(analysis: Analysis | null): Headline | null {
+  /*
+   * Null renders nothing at all, rather than a "Scoring…" placeholder.
+   *
+   * The placeholder promised a number that mostly never arrives: our own corpus
+   * can price about 17% of cars, so on most cards it sat there indefinitely and
+   * read as a stuck spinner. A card with no claim is honest about having no
+   * claim; the Research button is how you get an answer for the other 83%.
+   */
+  if (analysis === null) return null;
 
   // An insufficient comp set is a real answer. `medianPriceCents` is 0 on such a
   // set — a sentinel, not a price — so quoting a delta here would invent one.

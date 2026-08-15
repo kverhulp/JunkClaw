@@ -58,6 +58,11 @@
 
     <main id="list" class="list"></main>
 
+    <!-- What we set aside and why. Facebook files bulldozers, travel trailers,
+         buses and motorcycles under Vehicles, and a count is the difference
+         between "we filtered those out" and "the grid was empty". -->
+    <p id="set-aside" class="set-aside" hidden></p>
+
 
     <!-- Settings live over the panel, not in a separate page: opening criteria
          must never pull you off the Marketplace page you're shopping. -->
@@ -114,6 +119,12 @@
             <button class="opt" type="button" data-value="automatic" aria-pressed="false">Automatic</button>
             <button class="opt" type="button" data-value="manual" aria-pressed="false">Manual</button>
           </div>
+          <!-- Said plainly because the old behaviour was to accept this setting
+               and silently ignore it: the grid carries no transmission field. -->
+          <p class="hint">
+            Not in Marketplace's grid data, so this can only be applied by
+            Facebook's own filter — use Search Facebook below.
+          </p>
         </div>
 
         <div class="field">
@@ -147,6 +158,21 @@
         </div>
 
         <hr class="rule" />
+
+        <!-- Budget, years, mileage and transmission are all filters Facebook
+             runs server-side. Handing them over is the only way transmission
+             works at all, and it costs no extra requests: the page fetches one
+             narrower grid instead of a wide one. -->
+        <div class="field">
+          <span class="field-label">Search Facebook with these</span>
+          <button id="apply-marketplace" class="btn-quiet" type="button">
+            Open filtered Marketplace
+          </button>
+          <p class="hint" id="apply-note">
+            Opens Marketplace with your budget, years, mileage and transmission
+            already applied, so Facebook filters before we ever see the results.
+          </p>
+        </div>
 
         <div class="field">
           <span class="field-label">Connection</span>

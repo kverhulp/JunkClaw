@@ -11,10 +11,12 @@ import type { DealRecord } from "@/lib/deals";
 import { compPosition } from "@junkclaw/core";
 import { buildShortlist, type ShortlistEntry } from "@/lib/shortlist";
 import { compSummary, confidenceLabel, dealHeadline, describeFailure, researchHeadline } from "@/lib/copy";
-import { postResearch } from "@/lib/api";
+import { postDraft, postResearch } from "@/lib/api";
 import type { VehicleResearch } from "@junkclaw/schema";
 import { sortShortlist, type SortKey } from "@/lib/sort";
 import { toCriteria, toForm, type CriteriaFormValues } from "@/lib/criteria-form";
+import { marketplaceUrl, unsupportedByMarketplace } from "@/lib/marketplace-url";
+import { parseProse, type ProseSpan } from "@/lib/prose";
 import { apiBaseUrl, apiToken, criteria, readCriteria } from "@/lib/settings";
 
 /**
@@ -46,6 +48,33 @@ let analyses = new Map<string, DealRecord["analysis"]>();
 const expanded = new Set<string>();
 /** Research already fetched this session, keyed by normalised model-year. */
 const researched = new Map<string, VehicleResearch>();
+/**
+ * Research in flight, keyed the same way, holding when each call started.
+ *
+ * State rather than DOM, because `render()` replaces every card and a scroll
+ * burst re-renders constantly. The previous version captured the button and its
+ * wrapper at click time and wrote the result back to them ~50 seconds later —
+ * by which point a single new listing had detached both, so the answer landed
+ * on nodes no longer in the document and the card still showed its button.
+ * That is the whole of "sometimes it works, sometimes it doesn't": it worked
+ * only when nothing arrived during the call.
+ */
+const researching = new Map<string, number>();
+/** Why the last attempt failed, so a re-render does not lose the reason. */
+const researchErrors = new Map<string, string>();
+/** Drafted opening messages, keyed by listing. Same render-model reasons. */
+const drafts = new Map<string, { body: string; asksForVin: boolean }>();
+const drafting = new Map<string, number>();
+/** A refusal (usually the ceiling) or a failure, kept per listing. */
+const draftNotes = new Map<string, string>();
+/**
+ * Elapsed-second tickers owned by the current render, cleared by the next.
+ *
+ * Typed as `number` rather than `ReturnType<typeof set\u0049nterval>` so the
+ * declaration does not trip scripts/guards.sh §5, which greps for timer calls
+ * and cannot tell a type from one. The browser overload returns a number.
+ */
+const tickers = new Set<number>();
 
 /* ---------- settings sheet ----------
    Over the panel, never a separate page. Opening criteria used to call
@@ -153,6 +182,31 @@ async function loadSheet(): Promise<void> {
   input("apiToken").value = token;
   savedFlag.hidden = true;
 }
+
+/**
+ * Hands the saved criteria to Facebook's own filters.
+ *
+ * `tabs.create` needs no permission — the manifest still carries only `storage`
+ * and `sidePanel`. This is a navigation the user asked for by clicking, to a URL
+ * they could have typed, which is the whole distinction: we are not browsing
+ * Marketplace on anyone's behalf, we are opening one page once.
+ */
+document.querySelector<HTMLButtonElement>("#apply-marketplace")!.addEventListener("click", () => {
+  void (async () => {
+    const saved = await readCriteria();
+    const dropped = unsupportedByMarketplace(saved);
+
+    const note = document.querySelector<HTMLElement>("#apply-note")!;
+    // Named, not swallowed. A criterion that cannot survive the trip should say
+    // so at the moment it is dropped, not quietly return the wrong cars.
+    note.textContent =
+      dropped.length === 0
+        ? "Opened. Facebook is filtering; results appear here as you scroll."
+        : `Opened. Facebook cannot filter on ${dropped.join("; ")} — judged here instead, once known.`;
+
+    await browser.tabs.create({ url: marketplaceUrl(saved) });
+  })();
+});
 
 document.querySelector<HTMLButtonElement>("#sheet-save")!.addEventListener("click", () => {
   void (async () => {
@@ -264,12 +318,37 @@ function onShortlist(entry: ShortlistEntry): boolean {
   return entry.verdict === null || entry.verdict.qualifies;
 }
 
+/**
+ * Everything that is actually a car, which "All" now means.
+ *
+ * `other` entries carry a null verdict — there is no sensible fit judgement on a
+ * bulldozer — so without this they would pass `onShortlist` and land on the Fit
+ * tab, badged as meeting criteria they were never tested against.
+ */
+function cars(): ShortlistEntry[] {
+  return entries.filter((entry) => entry.kind !== "other");
+}
+
 function render(): void {
-  const matching = filter === "all" ? entries : entries.filter(onShortlist);
+  // Every card is about to be replaced, so the intervals driving their elapsed
+  // counters are about to be orphaned. Clear them before they are.
+  for (const ticker of tickers) clearInterval(ticker);
+  tickers.clear();
+
+  const vehicles = cars();
+  const matching = filter === "all" ? vehicles : vehicles.filter(onShortlist);
   const shown = sortShortlist(matching, analyses, sort);
 
-  text("#count-fit", String(entries.filter(onShortlist).length));
-  text("#count-all", String(entries.length));
+  text("#count-fit", String(vehicles.filter(onShortlist).length));
+  text("#count-all", String(vehicles.length));
+
+  const setAside = entries.length - vehicles.length;
+  const note = document.querySelector<HTMLElement>("#set-aside")!;
+  note.textContent =
+    setAside === 1
+      ? "1 listing set aside — not a car (Facebook files trailers, machinery and bikes under Vehicles)."
+      : `${setAside} listings set aside — not cars (Facebook files trailers, machinery and bikes under Vehicles).`;
+  note.hidden = setAside === 0;
 
   list.replaceChildren();
 
@@ -285,7 +364,7 @@ function emptyState(): HTMLElement {
   const el = document.createElement("p");
   el.className = "empty";
   el.textContent =
-    entries.length === 0
+    cars().length === 0
       ? "Open a Marketplace vehicles page and scroll. Cars you pass appear here."
       : "Nothing on this page fits your criteria. Widen them in the cog, or switch to All.";
   return el;
@@ -331,9 +410,13 @@ function card(entry: ShortlistEntry): HTMLElement {
     priceRow.append(was);
   }
 
-  const delta = document.createElement("span");
-  delta.className = `delta ${headline.tone}`;
-  delta.textContent = headline.text;
+  // No headline means no comp-based claim for this car, and the card simply
+  // does not make one.
+  const delta = headline === null ? null : document.createElement("span");
+  if (delta !== null && headline !== null) {
+    delta.className = `delta ${headline.tone}`;
+    delta.textContent = headline.text;
+  }
 
   const meta = document.createElement("p");
   meta.className = "meta";
@@ -359,7 +442,7 @@ function card(entry: ShortlistEntry): HTMLElement {
     }
   }
 
-  body.append(title, priceRow, delta, meta, tags);
+  body.append(...[title, priceRow, delta, meta, tags].filter((n): n is HTMLElement => n !== null));
 
   // Only rows we can actually say more about are expandable. A disclosure that
   // opens onto nothing is worse than no disclosure.
@@ -388,6 +471,8 @@ function card(entry: ShortlistEntry): HTMLElement {
   if (entry.vehicle !== null) {
     body.append(researchBlock(entry.vehicle));
   }
+
+  body.append(draftBlock(entry.facts.externalId));
 
   const open = document.createElement("a");
   open.className = "open";
@@ -510,8 +595,8 @@ function researchBlock(vehicle: { year: number; make: string; model: string }): 
   const wrap = document.createElement("div");
   wrap.className = "research";
   const key = vehicleKeyOf(vehicle);
-  const existing = researched.get(key);
 
+  const existing = researched.get(key);
   if (existing) {
     wrap.append(renderResearch(existing));
     return wrap;
@@ -520,46 +605,208 @@ function researchBlock(vehicle: { year: number; make: string; model: string }): 
   const button = document.createElement("button");
   button.type = "button";
   button.className = "btn-quiet research-btn";
-  button.textContent = `Research the ${vehicle.year} ${vehicle.make} ${vehicle.model}`;
-  button.addEventListener("click", () => {
-    void runResearch(vehicle, button, wrap);
-  });
+
+  const startedAt = researching.get(key);
+  if (startedAt !== undefined) {
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = "Researching\u2026";
+
+    // Elapsed is derived from when the call actually started, not from when
+    // this element was built, so a re-render mid-call does not restart the
+    // count at zero.
+    const counter = document.createElement("span");
+    counter.className = "elapsed";
+    counter.setAttribute("aria-hidden", "true");
+    button.append(counter);
+    const tick = (): void => {
+      counter.textContent = ` ${Math.round((Date.now() - startedAt) / 1000)}s`;
+    };
+    tick();
+    // `window.` for the DOM overload, which returns a number — @types/node
+    // otherwise shadows it with NodeJS.Timeout.
+    tickers.add(window.setInterval(tick, 1000)); // guards:allow-timer
+
+    const bar = document.createElement("div");
+    bar.className = "research-progress";
+    bar.setAttribute("role", "progressbar");
+    bar.setAttribute("aria-label", "Researching");
+    bar.append(document.createElement("span"));
+
+    wrap.append(button, bar);
+    return wrap;
+  }
+
+  const failure = researchErrors.get(key);
+  button.textContent = failure
+    ? "Research failed \u2014 try again"
+    : `Research the ${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+  button.addEventListener("click", () => void runResearch(vehicle));
   wrap.append(button);
+
+  if (failure) {
+    // Said out loud rather than swallowed: the usual causes are no token and a
+    // server that is not running, and both look identical from a blank panel.
+    const why = document.createElement("p");
+    why.className = "hint";
+    why.textContent = failure;
+    wrap.append(why);
+  }
+
   return wrap;
 }
 
-async function runResearch(
-  vehicle: { year: number; make: string; model: string },
-  button: HTMLButtonElement,
-  wrap: HTMLElement,
-): Promise<void> {
-  button.disabled = true;
-  button.textContent = "Researching…";
+async function runResearch(vehicle: { year: number; make: string; model: string }): Promise<void> {
+  const key = vehicleKeyOf(vehicle);
+
+  // A retry starts clean, so the previous attempt's reason cannot sit under a
+  // button that is now saying it is working.
+  researchErrors.delete(key);
+  researching.set(key, Date.now());
+  render();
 
   try {
     const [baseUrl, token] = await Promise.all([apiBaseUrl.getValue(), apiToken.getValue()]);
-    const result = await postResearch({ baseUrl, token }, vehicle);
-    researched.set(vehicleKeyOf(vehicle), result);
-    wrap.replaceChildren(renderResearch(result));
+    researched.set(key, await postResearch({ baseUrl, token }, vehicle));
   } catch (error) {
-    // Said out loud rather than swallowed: the usual causes are no token and a
-    // server that is not running, and both look identical from a blank panel.
-    button.disabled = false;
-    button.textContent = "Research failed — try again";
-    const why = document.createElement("p");
-    why.className = "hint";
-    why.textContent = error instanceof Error ? error.message : String(error);
-    wrap.append(why);
+    researchErrors.set(key, error instanceof Error ? error.message : String(error));
+  } finally {
+    researching.delete(key);
+    // Re-render rather than touching the element we started from: that element
+    // may well be gone, and this is the only version that is correct either way.
+    render();
   }
 }
 
+
 /**
- * Rendered as its own claim, under its own heading, with its sources.
+ * The opening message, drafted for the user to send themselves.
  *
- * Never merged into the delta above: that one measures this listing against
- * local asking prices, this one describes the model-year from the open web.
- * Different evidence, different confidence, shown separately.
+ * Deliberately never sends. The extension has no path to Messenger and should
+ * not have one: a message going out under someone's name is theirs to send,
+ * having read it. The button says "Draft", the result has a Copy control, and
+ * that is the whole flow.
+ *
+ * Rendered from state rather than from captured elements, for the same reason
+ * research is — a scroll burst re-renders every card mid-call.
  */
+function draftBlock(externalId: string): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "research draft";
+
+  const existing = drafts.get(externalId);
+  if (existing) {
+    const label = document.createElement("p");
+    label.className = "detail-label";
+    label.textContent = "Draft message";
+
+    const body = document.createElement("p");
+    body.className = "draft-body";
+    body.textContent = existing.body;
+
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "btn-quiet";
+    copy.textContent = "Copy";
+    copy.addEventListener("click", () => {
+      void navigator.clipboard.writeText(existing.body).then(
+        () => {
+          copy.textContent = "Copied";
+          window.setTimeout(() => (copy.textContent = "Copy"), 1500); // guards:allow-timer
+        },
+        () => {
+          copy.textContent = "Couldn't copy";
+        },
+      );
+    });
+
+    const note = document.createElement("p");
+    note.className = "hint";
+    note.textContent = "Read it before you send it. AutoScout never messages anyone for you.";
+
+    wrap.append(label, body, copy, note);
+    return wrap;
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "btn-quiet research-btn";
+
+  const startedAt = drafting.get(externalId);
+  if (startedAt !== undefined) {
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = "Drafting\u2026";
+
+    const counter = document.createElement("span");
+    counter.className = "elapsed";
+    counter.setAttribute("aria-hidden", "true");
+    button.append(counter);
+    const tick = (): void => {
+      counter.textContent = ` ${Math.round((Date.now() - startedAt) / 1000)}s`;
+    };
+    tick();
+    tickers.add(window.setInterval(tick, 1000)); // guards:allow-timer
+
+    const bar = document.createElement("div");
+    bar.className = "research-progress";
+    bar.setAttribute("role", "progressbar");
+    bar.setAttribute("aria-label", "Drafting");
+    bar.append(document.createElement("span"));
+
+    wrap.append(button, bar);
+    return wrap;
+  }
+
+  const note = draftNotes.get(externalId);
+  button.textContent = note ? "Draft failed \u2014 try again" : "Draft a message to the seller";
+  button.addEventListener("click", () => void runDraft(externalId));
+  wrap.append(button);
+
+  if (note) {
+    const why = document.createElement("p");
+    why.className = "hint";
+    why.textContent = note;
+    wrap.append(why);
+  }
+
+  return wrap;
+}
+
+async function runDraft(externalId: string): Promise<void> {
+  draftNotes.delete(externalId);
+  drafting.set(externalId, Date.now());
+  render();
+
+  try {
+    const [baseUrl, token, saved] = await Promise.all([
+      apiBaseUrl.getValue(),
+      apiToken.getValue(),
+      readCriteria(),
+    ]);
+    // The user's budget ceiling rides along, so a draft that names a number
+    // above it is refused server-side rather than shown and trusted.
+    const response = await postDraft(
+      { baseUrl, token },
+      { externalId, maxPriceCents: saved.budgetMaxCents },
+    );
+
+    if (response.draft) {
+      drafts.set(externalId, {
+        body: response.draft.body,
+        asksForVin: response.draft.asksForVin,
+      });
+    } else {
+      draftNotes.set(externalId, response.reason ?? "No draft was produced.");
+    }
+  } catch (error) {
+    draftNotes.set(externalId, error instanceof Error ? error.message : String(error));
+  } finally {
+    drafting.delete(externalId);
+    render();
+  }
+}
+
 function renderResearch(result: VehicleResearch): HTMLElement {
   const el = document.createElement("div");
 
@@ -575,10 +822,7 @@ function renderResearch(result: VehicleResearch): HTMLElement {
   el.append(line);
 
   if (result.research) {
-    const prose = document.createElement("p");
-    prose.className = "research-text";
-    prose.textContent = result.research;
-    el.append(prose);
+    el.append(renderProse(result.research));
   }
 
   const sources = document.createElement("p");
@@ -590,6 +834,50 @@ function renderResearch(result: VehicleResearch): HTMLElement {
   el.append(sources);
 
   return el;
+}
+
+/**
+ * Builds the research prose out of parsed blocks.
+ *
+ * Elements are constructed from spans rather than assembled into an HTML string,
+ * so model output can never become markup. `textContent` on every leaf is the
+ * whole safety argument, and it costs nothing.
+ */
+function renderProse(text: string): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+
+  for (const block of parseProse(text)) {
+    if (block.kind === "list") {
+      const list = document.createElement("ul");
+      list.className = "research-list";
+      for (const item of block.items) {
+        const li = document.createElement("li");
+        appendSpans(li, item);
+        list.append(li);
+      }
+      fragment.append(list);
+      continue;
+    }
+
+    const el = document.createElement(block.kind === "heading" ? "h4" : "p");
+    el.className = block.kind === "heading" ? "research-heading" : "research-text";
+    appendSpans(el, block.spans);
+    fragment.append(el);
+  }
+
+  return fragment;
+}
+
+function appendSpans(parent: HTMLElement, spans: readonly ProseSpan[]): void {
+  for (const span of spans) {
+    if (!span.bold) {
+      parent.append(document.createTextNode(span.text));
+      continue;
+    }
+    const strong = document.createElement("strong");
+    strong.textContent = span.text;
+    parent.append(strong);
+  }
 }
 
 function tag(label: string, kind: string): HTMLElement {

@@ -266,3 +266,61 @@ describe("photos", () => {
     }
   });
 });
+
+/**
+ * Facebook's Categories rail links to `/marketplace/<location-id>/search/`, not
+ * to the category grid, and that surface returns the same listings under a
+ * different container: `marketplace_search.feed_units` rather than
+ * `marketplace_feed_stories`. Captured live — the responses are ~64KB of
+ * `/api/graphql/` with `marketplace_feed_stories` absent entirely.
+ *
+ * Before this, such a page parsed to zero listings while showing 26 cars.
+ */
+describe("search payloads, which use a different container", () => {
+  const edge = (id: string, title: string) => ({
+    node: {
+      listing: {
+        id,
+        marketplace_listing_title: title,
+        listing_price: { amount: "6500.00" },
+        is_live: true,
+        location: { reverse_geocode: { city: "Charlottetown", state: "PE" } },
+      },
+    },
+  });
+
+  const searchPayload = {
+    data: {
+      marketplace_search: {
+        feed_units: {
+          edges: [edge("1", "2014 Honda Civic"), edge("2", "2012 Mazda mazda3")],
+        },
+      },
+    },
+  };
+
+  it("finds edges under marketplace_search.feed_units", () => {
+    expect(findListingEdges(searchPayload)).toHaveLength(2);
+  });
+
+  it("parses them into listings", () => {
+    expect(parseListings(searchPayload).map((l) => l.rawTitle)).toEqual([
+      "2014 Honda Civic",
+      "2012 Mazda mazda3",
+    ]);
+  });
+
+  it("prefers the real feed over a stray single-listing strip", () => {
+    const withDecoy = {
+      data: {
+        related_items: { edges: [edge("9", "2001 Ford Focus")] },
+        marketplace_search: { feed_units: searchPayload.data.marketplace_search.feed_units },
+      },
+    };
+    expect(findListingEdges(withDecoy)).toHaveLength(2);
+  });
+
+  it("still returns null when nothing carries a listing", () => {
+    expect(findListingEdges({ data: { marketplace_search: { feed_units: { edges: [] } } } })).toBeNull();
+  });
+});

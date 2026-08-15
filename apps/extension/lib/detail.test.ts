@@ -134,3 +134,61 @@ describe("parseListingDetail", () => {
     });
   });
 });
+
+/**
+ * The wrapper the payload actually arrives in.
+ *
+ * Captured live from `/marketplace/item/4015803608556981/`: the listing sits
+ * fifteen levels down behind bundler scaffolding, not at the top of the
+ * document. Reading `payload.id` found nothing and every description was lost —
+ * silently, because a detail payload that fails to parse falls through to the
+ * grid parser, which correctly reports no listings.
+ */
+describe("detail payloads inside their real wrapper", () => {
+  const listing = {
+    __typename: "GroupCommerceProductItem",
+    id: "4015803608556981",
+    marketplace_listing_title: "2015 Volkswagen Gti",
+    redacted_description: {
+      text: "Car works well, body is pretty good shape, inspection good until July 2027.",
+    },
+    condition: "USED",
+    vehicle_odometer_data: { unit: "KILOMETERS", value: 250000 },
+  };
+
+  const wrapped = {
+    require: [
+      ["ScheduledServerJS", null, null, [
+        { __bbox: { require: [null, null, null, [null, { __bbox: { result: { data: { viewer: {
+          marketplace_product_details_page: { target: listing },
+        } } } } }]] } },
+      ]],
+    ],
+  };
+
+  it("finds the listing fifteen levels down", () => {
+    expect(parseListingDetail(wrapped)?.externalId).toBe("4015803608556981");
+  });
+
+  it("recovers the description, which is the whole point", () => {
+    expect(parseListingDetail(wrapped)?.description).toContain("inspection good until July 2027");
+  });
+
+  it("still reads the fields around it", () => {
+    const detail = parseListingDetail(wrapped)!;
+    expect(detail.mileageKm).toBe(250_000);
+    expect(detail.condition).toBe("USED");
+  });
+
+  it("still parses a bare listing object, as before", () => {
+    expect(parseListingDetail(listing)?.externalId).toBe("4015803608556981");
+  });
+
+  it("does not go looking inside a grid feed", () => {
+    expect(parseListingDetail({ marketplace_feed_stories: { edges: [] } })).toBeNull();
+  });
+
+  it("returns null when nothing in the tree carries a description", () => {
+    expect(parseListingDetail({ data: { viewer: { something: { id: "1" } } } })).toBeNull();
+  });
+});

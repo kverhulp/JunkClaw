@@ -25,7 +25,8 @@ function entry(
     lastSeenAt: "2026-08-14T00:00:00.000Z",
     rawPayload: {},
   };
-  return { facts, vehicle: null, verdict: null };
+  // Sorting is indifferent to kind; these stand in for ordinary cars.
+  return { facts, vehicle: null, verdict: null, kind: "car" };
 }
 
 function scored(priceDeltaCents: number, confidence: Analysis["comps"]["confidence"] = "high") {

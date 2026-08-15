@@ -25,8 +25,14 @@ function analysis(overrides: Partial<Analysis> = {}): Analysis {
 }
 
 describe("dealHeadline", () => {
-  it("says scoring is still in flight before an analysis lands", () => {
-    expect(dealHeadline(null)).toEqual({ tone: "pending", text: "Scoring…" });
+  /*
+   * Was "Scoring…", which promised a number that mostly never came: our corpus
+   * can price about 17% of cars, so on most cards the placeholder sat there
+   * forever and read as a stuck spinner. No claim is better than a false
+   * promise of one.
+   */
+  it("makes no claim at all before an analysis lands", () => {
+    expect(dealHeadline(null)).toBeNull();
   });
 
   /*

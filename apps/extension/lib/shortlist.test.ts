@@ -85,3 +85,50 @@ describe("buildShortlist", () => {
     expect(entries.map((e) => e.facts.externalId)).toEqual(["1", "2", "3"]);
   });
 });
+
+/**
+ * Every title here was captured from one lightly-scrolled Vehicles grid in
+ * Charlottetown. Facebook filed all of them under Vehicles, and before the
+ * classifier every one reached the panel as a car with a price and a Fit badge.
+ */
+describe("things Facebook files under Vehicles that are not cars", () => {
+  const kindOf = (rawTitle: string) => buildShortlist([facts({ rawTitle })], criteria)[0]!.kind;
+
+  it.each([
+    ["2012 Cat d6k", "a bulldozer — Cat is not on the make list"],
+    ["2010 Black Series morrison", "a travel trailer"],
+    ["2013 International starcraft", "a school bus"],
+    ["2025 Emmo zone gts electric e-motorcycle", "an e-motorcycle"],
+    ["2019 Yamaha YZF-R3", "a recognised make that builds no cars"],
+    ["2015 Polaris RZR 900", "a side-by-side"],
+  ])("sets aside %s (%s)", (title) => {
+    expect(kindOf(title)).toBe("other");
+  });
+
+  it("sets aside a real car that is being parted out", () => {
+    expect(kindOf("PARTING OUT 2013 Kia Sorento FWD")).toBe("other");
+  });
+
+  it("still admits the actual cars from the same grid", () => {
+    for (const title of [
+      "2015 Ram 3500 Crew Cab",
+      "2007 Toyota Camry",
+      "2010 BMW 3 Series",
+      "2013 Ford edge",
+      "2004 Nissan 350z",
+      "2020 Chevy Colorado",
+    ]) {
+      expect(kindOf(title), title).toBe("car");
+    }
+  });
+
+  it("judges fit only for cars, so a bulldozer is never badged as qualifying", () => {
+    const [dozer] = buildShortlist([facts({ rawTitle: "2012 Cat d6k" })], criteria);
+    expect(dozer!.verdict).toBeNull();
+  });
+
+  it("keeps a car whose title would not parse, rather than hiding it", () => {
+    const [entry] = buildShortlist([facts({ rawTitle: "Mint Civic!! low kms" })], criteria);
+    expect(entry!.kind).toBe("unreadable");
+  });
+});

@@ -3,6 +3,7 @@ import type { ListingDetail } from "./detail";
 import {
   IngestResponseSchema,
   ScoreResponseSchema,
+  DraftMessageSchema,
   VehicleResearchSchema,
   type IngestRequest,
   type IngestResponse,
@@ -10,6 +11,19 @@ import {
   type ScoreResponse,
   type VehicleResearch,
 } from "@junkclaw/schema";
+
+/**
+ * A draft, or the reason there isn't one.
+ *
+ * `reason` is not an error channel: the usual cause is the ceiling refusing a
+ * draft that named too high a number, and the user needs to read that rather
+ * than see a failure.
+ */
+const DraftResponseSchema = z.object({
+  draft: DraftMessageSchema.nullable(),
+  reason: z.string().nullable(),
+});
+export type DraftResponse = z.infer<typeof DraftResponseSchema>;
 
 /**
  * The extension's only door to our server.
@@ -54,8 +68,21 @@ export async function postScore(
  */
 export async function postResearch(
   config: ApiConfig,
-  body: { year: number; make: string; model: string },
+  vehicle: { year: number; make: string; model: string },
 ): Promise<VehicleResearch> {
+  /*
+   * Rebuilt field by field rather than forwarded, because the caller holds a
+   * whole `Vehicle` and TypeScript will not stop it being passed here — excess
+   * property checks apply to object literals, not to variables. It sent all
+   * nine fields, `/api/research` is a strictObject, and every click came back
+   * `400 Unrecognized keys: trim, mileageKm, transmission, drivetrain, fuel,
+   * vin`.
+   *
+   * Widening the server schema would have been the wrong repair. It is strict
+   * on purpose — a `Vehicle` can carry a VIN, and the request that asks what a
+   * model-year is worth has no business sending one.
+   */
+  const body = { year: vehicle.year, make: vehicle.make, model: vehicle.model };
   return request(config, "/api/research", body, VehicleResearchSchema);
 }
 
@@ -93,4 +120,17 @@ async function request<T>(
   }
 
   return schema.parse(await response.json());
+}
+
+/**
+ * Drafts the opening message for one listing.
+ *
+ * Drafting only — the panel shows the text and the user copies it themselves.
+ * Nothing is sent by the extension, and the button says so.
+ */
+export async function postDraft(
+  config: ApiConfig,
+  body: { externalId: string; maxPriceCents: number | null },
+): Promise<DraftResponse> {
+  return request(config, "/api/draft", body, DraftResponseSchema);
 }

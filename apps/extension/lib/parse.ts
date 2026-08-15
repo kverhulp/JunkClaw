@@ -65,38 +65,65 @@ interface RawListing {
 }
 
 /**
- * Finds the listing edges by searching for the `marketplace_feed_stories` key
- * rather than walking the literal path.
+ * Finds the listing edges by looking for an array of things that are listings.
  *
  * The full path runs through `require[0][3][0].__bbox.require[0][3][1].__bbox`
  * — bundler-generated scaffolding that changes without warning and has nothing
- * to do with the data. Searching for the one key we actually care about
- * survives that churn; hardcoding the path would make us brittle to a build
- * detail rather than to the schema.
+ * to do with the data. Hardcoding it would make us brittle to a build detail
+ * rather than to the schema.
+ *
+ * Searching for the container's *name* was the first attempt and was still one
+ * name too specific. A category grid puts its edges under
+ * `marketplace_feed_stories`; a search — which is where Facebook's own
+ * Categories rail sends you — puts identical edges under
+ * `marketplace_search.feed_units`. The parser knew only the first, so a page
+ * showing 26 cars yielded zero, with no error anywhere: a payload with no
+ * listings and a payload whose container we failed to name look exactly alike.
+ *
+ * Matching on the shape of the data costs nothing extra and stops us having to
+ * learn a new key every time Facebook adds a surface.
+ *
+ * The largest qualifying array wins, so a stray single-listing array — a
+ * "related items" strip, a saved-search preview — cannot beat the real feed.
  */
 export function findListingEdges(payload: unknown): unknown[] | null {
-  let found: unknown[] | null = null;
+  let best: unknown[] | null = null;
 
   const walk = (node: unknown, depth: number): void => {
-    if (found || depth > 60 || node === null || typeof node !== "object") return;
+    if (depth > 60 || node === null || typeof node !== "object") return;
 
     if (Array.isArray(node)) {
+      // Recognised by cargo, not by the name of the field holding it.
+      if (node.some(isListingEdge)) {
+        if (best === null || node.length > best.length) best = node;
+        return;
+      }
       for (const item of node) walk(item, depth + 1);
       return;
     }
 
     const record = node as Record<string, unknown>;
-    const stories = record["marketplace_feed_stories"] as { edges?: unknown } | undefined;
-    if (stories && Array.isArray(stories.edges)) {
-      found = stories.edges;
-      return;
-    }
-
     for (const key of Object.keys(record)) walk(record[key], depth + 1);
   };
 
   walk(payload, 0);
-  return found;
+  return best;
+}
+
+/**
+ * An edge is a listing edge when it carries a listing. Nothing else qualifies.
+ *
+ * This is also what disarms the decoy: Facebook emits a second
+ * `marketplace_feed_stories` object carrying only `debug_info`/`buy_location`,
+ * and it lands first. It has no edges holding a listing, so it is skipped
+ * without needing to know it exists.
+ */
+function isListingEdge(edge: unknown): boolean {
+  if (typeof edge !== "object" || edge === null) return false;
+  const node = (edge as { node?: unknown }).node;
+  if (typeof node !== "object" || node === null) return false;
+  const listing = (node as { listing?: unknown }).listing;
+  return typeof listing === "object" && listing !== null;
 }
 
 /**

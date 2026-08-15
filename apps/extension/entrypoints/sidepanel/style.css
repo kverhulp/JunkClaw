@@ -303,12 +303,26 @@ body {
   text-align: center;
 }
 
+/* Quiet by design: a footnote about what was discarded, not a finding. */
+.set-aside {
+  margin: 0;
+  padding: 10px 16px 16px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 /* A 2px rule between rows rather than a card edge — the system's structural
    device. Cards would stack rounded boxes inside a 400px column and read as
    clutter at this density. */
+/* The photo column scales with the panel instead of sitting at a fixed 64px.
+   A side panel is resizable, and 64px was a stamp — too small to judge a car by
+   at any width, which matters more now that `photo-analyst` reports rust and
+   damage the user should be able to see for themselves. Clamped so it never
+   crowds the text in a narrow panel or balloons in a wide one. */
 .deal {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: clamp(104px, 32%, 176px) minmax(0, 1fr);
   gap: 12px;
   padding: 12px 14px;
   border-bottom: 2px solid var(--color-divider);
@@ -827,10 +841,128 @@ body {
   cursor: progress;
 }
 
+/* An indeterminate 2px rule, not a spinning disc. The system has no circles in
+   it — every radius is zero and every divider is 2px — so the honest way to
+   show "still working" here is the rule itself, moving. */
+.research-progress {
+  height: 2px;
+  margin-top: 8px;
+  background: var(--color-neutral-300);
+  overflow: hidden;
+}
+
+.research-progress > span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--color-accent);
+  animation: research-sweep 1.1s linear infinite;
+}
+
+@keyframes research-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Tabular figures so the button stops changing width as the count ticks — at
+   one update a second, a jittering label is the thing you end up watching. */
+.elapsed {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+/* The global reduce-motion rule collapses every animation to 0.01ms, which for
+   an infinite loop means sweeping at roughly 100Hz — worse than the motion it
+   was meant to remove. Stop it outright and let the seconds counter carry the
+   signal instead. */
+@media (prefers-reduced-motion: reduce) {
+  .research-progress > span {
+    width: 100%;
+    opacity: 0.5;
+    animation: none !important;
+  }
+}
+
+/* No `white-space: pre-wrap` any more. The agent writes markdown, and preserving
+   its newlines was what put literal asterisks in front of the user — the text is
+   parsed into blocks now, so normal wrapping is correct. */
 .research-text {
   margin: 8px 0 0;
   font-size: 12.5px;
   line-height: 1.55;
   color: var(--color-text-secondary);
+}
+
+/* Section headings the agent numbers itself ("1. Typical Used Asking Price").
+   Sized down and lettered out rather than bolded up: it is a label inside a
+   card, not a second title competing with the car's name. */
+.research-heading {
+  margin: 14px 0 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.research-heading:first-child {
+  margin-top: 8px;
+}
+
+/* Square markers, drawn with a border rather than a list-style disc, so the
+   system's zero-radius geometry survives into the bullets. */
+.research-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.research-list li {
+  position: relative;
+  padding-left: 14px;
+  margin-top: 5px;
+}
+
+.research-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  background: var(--color-accent);
+}
+
+/* The agent bolds the lead-in of each bullet ("Cooling system failures:"), which
+   is the part worth scanning. Keep it dark against the secondary body text. */
+.research-list strong,
+.research-text strong {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* The source count is a footnote about the whole block, so it needs air between
+   it and the last bullet — otherwise it reads as one more list item. */
+.research .hint {
+  margin-top: 12px;
+}
+
+/* The drafted message. Set on the surface tone so it reads as a quoted artefact
+   the user is about to send, not as more of our commentary about the car. */
+.draft-body {
+  margin: 8px 0 10px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border-left: 2px solid var(--color-accent);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text);
   white-space: pre-wrap;
 }

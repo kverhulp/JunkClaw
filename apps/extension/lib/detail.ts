@@ -43,10 +43,12 @@ const KM_PER_MILE = 1.609344;
 /** Returns null when the payload is not a detail page, or has nothing to add. */
 export function parseListingDetail(payload: unknown): ListingDetail | null {
   if (typeof payload !== "object" || payload === null) return null;
-  const raw = payload as Record<string, unknown>;
 
   // A grid feed is a different shape entirely and must not be half-read.
-  if ("marketplace_feed_stories" in raw) return null;
+  if ("marketplace_feed_stories" in (payload as Record<string, unknown>)) return null;
+
+  const raw = findListingNode(payload);
+  if (raw === null) return null;
 
   const externalId = asString(raw.id);
   if (externalId === null) return null;
@@ -72,6 +74,50 @@ export function parseListingDetail(payload: unknown): ListingDetail | null {
   // Nothing to contribute is a reason to skip, not to send an empty record and
   // overwrite what the grid already told us.
   return hasSomethingToAdd(detail) ? detail : null;
+}
+
+/**
+ * Locates the listing inside whatever wrapper it arrived in.
+ *
+ * This function exists because assuming a path cost us every description we
+ * should have had. The listing does not sit at the top of a detail payload; it
+ * sits at
+ *
+ *   require[0][3][0].__bbox.require[3][3][1].__bbox.result.data.viewer
+ *     .marketplace_product_details_page.target
+ *
+ * fifteen levels down, behind bundler scaffolding whose indices are a build
+ * detail. Reading `payload.id` therefore found nothing, returned null, and the
+ * payload fell through to the grid parser — which found no edges and dropped it
+ * without a word. A page with a 191KB description on it enriched nothing, and
+ * the corpus sat at one description in 141 listings.
+ *
+ * So: match on shape, not position. A listing is the object that has both an id
+ * and a description — nothing else in these payloads carries `redacted_description`.
+ * The same choice `findListingEdges` had to make, for the same reason.
+ */
+function findListingNode(payload: unknown): Record<string, unknown> | null {
+  let found: Record<string, unknown> | null = null;
+
+  const walk = (node: unknown, depth: number): void => {
+    if (found || depth > 60 || node === null || typeof node !== "object") return;
+
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, depth + 1);
+      return;
+    }
+
+    const record = node as Record<string, unknown>;
+    if ("redacted_description" in record && asString(record.id) !== null) {
+      found = record;
+      return;
+    }
+
+    for (const key of Object.keys(record)) walk(record[key], depth + 1);
+  };
+
+  walk(payload, 0);
+  return found;
 }
 
 function hasSomethingToAdd(detail: ListingDetail): boolean {

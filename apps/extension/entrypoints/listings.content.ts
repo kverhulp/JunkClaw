@@ -1,6 +1,7 @@
 import { isPagePayloadMessage, type RuntimeMessage } from "@/lib/protocol";
 import { PayloadShapeError, attachUrlHashes, parseListings } from "@/lib/parse";
 import { parseListingDetail } from "@/lib/detail";
+import { isVehicleSurface } from "@/lib/surface";
 
 /**
  * The isolated-world half of the content script.
@@ -30,8 +31,33 @@ export default defineContentScript({
     "https://www.facebook.com/marketplace/item/*",
     "https://www.facebook.com/marketplace/*/vehicles*",
     "https://www.facebook.com/marketplace/search*",
+    /*
+     * Facebook's own Categories rail links to
+     * `/marketplace/<location-id>/search/?category_id=…`, which none of the
+     * patterns above reach — the path does not start with `search`, and the
+     * category lives in a query parameter no match pattern can read. Loading on
+     * every scoped search is the only way to be present there at all; whether we
+     * actually collect is decided per payload by `isVehicleSurface`.
+     */
+    "https://www.facebook.com/marketplace/*/search*",
   ],
-  runAt: "document_idle",
+  /*
+   * `document_start`, matching the page-world half — and not an optimisation.
+   *
+   * The first page of results is server-rendered into a <script type="application/json">
+   * that the page-world script forwards the instant the parser emits it, which
+   * is during HTML parsing and long before `document_idle`. `postMessage` has no
+   * buffer: a message posted into a frame whose listener has not attached yet is
+   * not queued, it is dropped. At `document_idle` this listener missed the entire
+   * initial grid on every single page load — 24 listings, silently, with both
+   * halves reporting themselves alive and the parser working perfectly on the
+   * payload nobody had handed it.
+   *
+   * Both halves now run at `document_start`, so whichever Chrome injects first,
+   * both have finished before the parser reaches the feed script. Injection
+   * order stops mattering, which is the only reason this is safe.
+   */
+  runAt: "document_start",
 
   main() {
     // Isolated-world liveness marker. An attribute, not a global, because the
@@ -39,10 +65,33 @@ export default defineContentScript({
     // collector inject?" from the page is what makes this debuggable at all.
     document.documentElement.setAttribute("data-junkclaw", "alive");
 
+    /*
+     * How many payloads have actually crossed the bridge, published to the DOM
+     * for the same reason "alive" is: the two halves cannot see each other's
+     * state, so without this the only observable difference between "the sender
+     * never posted", "the receiver was not listening yet" and "the parser found
+     * nothing" is a panel reading zero. That ambiguity is what made the
+     * `document_idle` race take as long as it did to find. One attribute
+     * separates all three.
+     */
+    let received = 0;
+    document.documentElement.setAttribute("data-junkclaw-payloads", "0");
+
     window.addEventListener("message", (event) => {
       if (event.source !== window) return;
       if (event.origin !== window.location.origin) return;
       if (!isPagePayloadMessage(event.data)) return;
+
+      /*
+       * Checked per payload, not once at injection. Marketplace is a single-page
+       * app: a tab that started on vehicles and was clicked through to the
+       * general feed is still running this script, and would otherwise pour
+       * sofas into a corpus of cars.
+       */
+      if (!isVehicleSurface(window.location.href)) return;
+
+      received += 1;
+      document.documentElement.setAttribute("data-junkclaw-payloads", String(received));
 
       /*
        * Detail pages carry the description, which grid payloads never do — and

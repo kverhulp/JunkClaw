@@ -13,6 +13,7 @@ import { LegalDialogs, type LegalDoc } from "../legal/legal-dialogs";
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/catalogue", label: "Catalogue" },
+  { href: "/negotiate", label: "Negotiate" },
   { href: "/settings", label: "Settings" },
 ];
 

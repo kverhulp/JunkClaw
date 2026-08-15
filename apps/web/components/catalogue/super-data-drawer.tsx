@@ -227,9 +227,12 @@ function Gallery({
 
       {listing.photoUrls.length > 1 ? (
         <div role="tablist" aria-label="Photo thumbnails" className="mt-2 flex gap-2">
+          {/* Keyed on position, not on the URL. Data URIs share a tail, and even
+              real CDN URLs can repeat — position is what actually identifies a
+              thumbnail in a fixed list. */}
           {listing.photoUrls.map((photo, photoIndex) => (
             <button
-              key={photo.slice(-24)}
+              key={photoIndex}
               role="tab"
               aria-selected={photoIndex === index}
               aria-label={`Photo ${photoIndex + 1}`}

@@ -174,9 +174,8 @@ export function useDashboard() {
     () =>
       delay({
         priceDrops: MOCK_LISTINGS.filter((listing) => listing.previousPriceCents !== null),
-        recentlyViewed: MOCK_LISTINGS.slice(0, 4),
       }),
     [],
-    (data) => data.priceDrops.length === 0 && data.recentlyViewed.length === 0,
+    (data) => data.priceDrops.length === 0,
   );
 }

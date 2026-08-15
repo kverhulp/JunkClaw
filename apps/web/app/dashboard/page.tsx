@@ -7,8 +7,6 @@ import { CarSuperDataDrawer } from "../../components/catalogue/super-data-drawer
 import {
   Button,
   Card,
-  CardBody,
-  CardHeader,
   EmptyState,
   ErrorState,
   Skeleton,
@@ -29,7 +27,7 @@ export default function DashboardPage() {
   return (
     <AppShell
       title="Dashboard"
-      description="Your shortlist, price movement, and what you looked at recently."
+      description="Your shortlist and price movement on the cars you are tracking."
     >
       {/* gap-10 rather than the gap-6 used between sections inside the loaded
           block: the shortlist is its own thing, and the same spacing on both
@@ -53,93 +51,64 @@ export default function DashboardPage() {
           action={<Button variant="primary" size="sm">Browse the catalogue</Button>}
         />
       ) : (
-        <div className="flex flex-col gap-6">
-          <section aria-labelledby="price-drops">
-            <h2 id="price-drops" className="text-[17px] font-medium">
-              Price drops
-            </h2>
-            <p className="mt-1 text-[14px] text-text-secondary">
-              A seller who has already dropped the price has told you they will move again.
-            </p>
+        <section aria-labelledby="price-drops">
+          <h2 id="price-drops" className="text-[17px] font-medium">
+            Price drops
+          </h2>
+          <p className="mt-1 text-[14px] text-text-secondary">
+            A seller who has already dropped the price has told you they will move again.
+          </p>
 
-            <Card className="mt-3 overflow-hidden">
-              <Table>
-                <thead>
-                  <tr>
-                    <Th>Vehicle</Th>
-                    <Th className="text-right">Was</Th>
-                    <Th className="text-right">Now</Th>
-                    <Th className="text-right">Change</Th>
-                    <Th>Supplier</Th>
-                    <Th className="text-right">Listed</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.priceDrops.map((listing) => {
-                    const change = listing.priceCents - (listing.previousPriceCents ?? 0);
-                    return (
-                      <tr
-                        key={listing.id}
-                        onClick={() => setSelected(listing)}
-                        className="cursor-pointer transition-colors duration-150 ease-out hover:bg-text/7"
-                      >
-                        <Td>
-                          <button
-                            type="button"
-                            className="text-left font-medium"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelected(listing);
-                            }}
-                          >
-                            {listing.vehicle.year} {titleCase(listing.vehicle.make)}{" "}
-                            {titleCase(listing.vehicle.model)}
-                          </button>
-                        </Td>
-                        <Td className="tabular text-right text-text-muted line-through">
-                          {money(listing.previousPriceCents ?? 0)}
-                        </Td>
-                        <Td className="tabular text-right font-medium">{money(listing.priceCents)}</Td>
-                        <Td className="tabular text-right text-accent-700">{signedMoney(change)}</Td>
-                        <Td className="text-text-secondary">{supplierLabel(listing.source)}</Td>
-                        <Td className="tabular text-right text-text-secondary">
-                          {listing.analysis ? `${listing.analysis.daysOnMarket}d` : "—"}
-                        </Td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </Table>
-            </Card>
-          </section>
-
-          <section aria-labelledby="recent">
-            <h2 id="recent" className="text-[17px] font-medium">
-              Recently viewed
-            </h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {data.recentlyViewed.map((listing) => (
-                <Card key={listing.id}>
-                  <CardHeader className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[14px] font-medium">
-                      {listing.vehicle.year} {titleCase(listing.vehicle.model)}
-                    </span>
-                    <span className="tabular shrink-0 text-[14px]">{money(listing.priceCents)}</span>
-                  </CardHeader>
-                  <CardBody>
-                    <button
-                      type="button"
+          <Card className="mt-3 overflow-hidden">
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Vehicle</Th>
+                  <Th className="text-right">Was</Th>
+                  <Th className="text-right">Now</Th>
+                  <Th className="text-right">Change</Th>
+                  <Th>Supplier</Th>
+                  <Th className="text-right">Listed</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.priceDrops.map((listing) => {
+                  const change = listing.priceCents - (listing.previousPriceCents ?? 0);
+                  return (
+                    <tr
+                      key={listing.id}
                       onClick={() => setSelected(listing)}
-                      className="text-[13px] text-accent hover:underline"
+                      className="cursor-pointer transition-colors duration-150 ease-out hover:bg-text/7"
                     >
-                      Open details
-                    </button>
-                  </CardBody>
-                </Card>
-              ))}
-            </div>
-          </section>
-        </div>
+                      <Td>
+                        <button
+                          type="button"
+                          className="text-left font-medium"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelected(listing);
+                          }}
+                        >
+                          {listing.vehicle.year} {titleCase(listing.vehicle.make)}{" "}
+                          {titleCase(listing.vehicle.model)}
+                        </button>
+                      </Td>
+                      <Td className="tabular text-right text-text-muted line-through">
+                        {money(listing.previousPriceCents ?? 0)}
+                      </Td>
+                      <Td className="tabular text-right font-medium">{money(listing.priceCents)}</Td>
+                      <Td className="tabular text-right text-accent-700">{signedMoney(change)}</Td>
+                      <Td className="text-text-secondary">{supplierLabel(listing.source)}</Td>
+                      <Td className="tabular text-right text-text-secondary">
+                        {listing.analysis ? `${listing.analysis.daysOnMarket}d` : "—"}
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          </Card>
+        </section>
       )}
       </Crossfade>
       </div>
@@ -158,11 +127,6 @@ function DashboardSkeleton() {
         ))}
       </div>
       <Skeleton className="h-56" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }, (_, index) => (
-          <Skeleton key={index} className="h-24" />
-        ))}
-      </div>
     </div>
   );
 }

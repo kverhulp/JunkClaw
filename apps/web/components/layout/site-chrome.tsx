@@ -173,7 +173,12 @@ export function SiteFooter({ flush = false }: { flush?: boolean }) {
     <footer className={flush ? "" : "mt-16 border-t-2 border-divider"}>
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-4">
         <div>
-          <p className="text-[20px] font-extrabold">AutoScout</p>
+          {/* Same mark as the header, one size up. The group class is what lets
+              the rim turn on hover — see BrandMark. */}
+          <Link href="/" className="group flex items-center gap-2 text-[20px] font-extrabold">
+            <BrandMark size={22} />
+            AutoScout
+          </Link>
           <p className="mt-1.5 text-[13px] text-text-secondary">Founded 2026</p>
         </div>
 

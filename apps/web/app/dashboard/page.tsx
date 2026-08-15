@@ -18,6 +18,7 @@ import {
   Th,
 } from "../../components/ui/primitives";
 import { Crossfade } from "../../components/ui/motion";
+import { ShortlistSection } from "../../components/dashboard/shortlist-section";
 import { useDashboard } from "../../lib/data";
 import { money, signedMoney, titleCase } from "../../lib/format";
 import { supplierLabel, type CatalogueListing } from "../../mocks/vehicles";
@@ -28,10 +29,15 @@ export default function DashboardPage() {
 
   return (
     <AppShell
-      title="Overview"
+      title="Dashboard"
       description="Saved searches, price movement, and what you looked at recently."
-      actions={<Button variant="primary" size="sm">New saved search</Button>}
     >
+      {/* gap-10 rather than the gap-6 used between sections inside the loaded
+          block: the shortlist is its own thing, and the same spacing on both
+          sides would read as one long list. */}
+      <div className="flex flex-col gap-10">
+      <ShortlistSection />
+
       <Crossfade state={isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready"}>
       {isLoading ? (
         <DashboardSkeleton />
@@ -156,6 +162,7 @@ export default function DashboardPage() {
         </div>
       )}
       </Crossfade>
+      </div>
 
       <CarSuperDataDrawer listing={selected} onClose={() => setSelected(null)} />
     </AppShell>

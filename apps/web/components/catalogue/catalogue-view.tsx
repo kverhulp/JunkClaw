@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
 
 import { Button, EmptyState, ErrorState } from "../ui/primitives";
 import { Crossfade } from "../ui/motion";
@@ -20,14 +19,11 @@ import { SUPPLIER, type CatalogueListing } from "../../mocks/vehicles";
  * true without decorating it.
  */
 export function CatalogueView() {
-  // Seeded from ?q= so the header's search actually lands somewhere. Read once
-  // as the initial value rather than kept in sync: after arriving, the filter
-  // sidebar owns the term, and re-syncing would fight the user's edits.
-  const searchParams = useSearchParams();
-  const [filters, setFilters] = useState<ListingFilters>(() => ({
-    ...EMPTY_FILTERS,
-    query: searchParams.get("q") ?? "",
-  }));
+  // Filters live in component state, not the URL. The header search that used to
+  // seed them from ?q= is gone, so reading search params here was orphaned — and
+  // `useSearchParams` forces a Suspense boundary that this page does not
+  // otherwise need.
+  const [filters, setFilters] = useState<ListingFilters>(EMPTY_FILTERS);
   const [selected, setSelected] = useState<CatalogueListing | null>(null);
   const [filtersOpenOnMobile, setFiltersOpenOnMobile] = useState(false);
 

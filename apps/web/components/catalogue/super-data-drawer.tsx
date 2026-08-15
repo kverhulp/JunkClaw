@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Badge, Button, cx, Table, Td, Th } from "../ui/primitives";
@@ -13,6 +14,7 @@ import {
   titleCase,
 } from "../../lib/format";
 import { supplierLabel, type CatalogueListing } from "../../mocks/vehicles";
+import { useShortlist } from "../../lib/shortlist";
 
 const RISK_LABELS: Record<string, string> = {
   salvage_or_rebuilt: "Salvage or rebuilt title",
@@ -40,12 +42,15 @@ export function CarSuperDataDrawer({
   onClose: () => void;
 }) {
   const [photoIndex, setPhotoIndex] = useState(0);
+  const shortlist = useShortlist();
 
   useEffect(() => {
     setPhotoIndex(0);
   }, [listing?.id]);
 
   if (!listing) return null;
+
+  const saved = shortlist.has(listing.id);
 
   const { vehicle, analysis } = listing;
   const title = `${vehicle.year} ${titleCase(vehicle.make)} ${titleCase(vehicle.model)}`;
@@ -58,12 +63,34 @@ export function CarSuperDataDrawer({
       open
       onClose={onClose}
       title={title}
+      /**
+       * Adds to the dashboard rather than drafting here. Drafting is a
+       * negotiation, and a negotiation needs its own screen with the spending
+       * ceiling in view — offering it as a footer button in a browsing drawer
+       * makes the most consequential action in the product the most casual one.
+       */
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>
-          <Button variant="primary">Draft a message</Button>
+          {saved ? (
+            <>
+              <Button variant="ghost" onClick={() => shortlist.remove(listing.id)}>
+                Remove
+              </Button>
+              <Link
+                href={`/negotiate/${listing.id}`}
+                className="inline-flex min-h-9 items-center gap-1.5 border border-transparent bg-accent px-3.5 text-[14px] font-extrabold text-bg transition-colors duration-150 ease-out hover:bg-accent-600"
+              >
+                Open negotiation
+              </Link>
+            </>
+          ) : (
+            <Button variant="primary" onClick={() => shortlist.add(listing.id)}>
+              Add to dashboard
+            </Button>
+          )}
         </>
       }
     >
@@ -227,9 +254,12 @@ function Gallery({
 
       {listing.photoUrls.length > 1 ? (
         <div role="tablist" aria-label="Photo thumbnails" className="mt-2 flex gap-2">
+          {/* Keyed on position, not on the URL. Data URIs share a tail, and even
+              real CDN URLs can repeat — position is what actually identifies a
+              thumbnail in a fixed list. */}
           {listing.photoUrls.map((photo, photoIndex) => (
             <button
-              key={photo.slice(-24)}
+              key={photoIndex}
               role="tab"
               aria-selected={photoIndex === index}
               aria-label={`Photo ${photoIndex + 1}`}

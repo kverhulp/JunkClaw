@@ -53,3 +53,50 @@ describe("isPartsListing", () => {
     expect(isPartsListing("2015 Ford Focus, new parts installed")).toBe(false);
   });
 });
+
+/**
+ * Machinery and ATVs wearing a make that also builds cars.
+ *
+ * The make allowlist cannot help here — Ford, Chevrolet, GMC and Honda all build
+ * cars — so eleven of twelve such titles reached the panel scored as cars.
+ * "1998 Honda Fortrax 300 4x4" was the one found live.
+ */
+describe("equipment sold under a car make", () => {
+  it.each([
+    ["2015 Ford tractor 3000"],
+    ["2011 GMC excavator"],
+    ["2012 Chevrolet skid steer"],
+    ["2014 Ford backhoe"],
+    ["2013 Ford front end loader"],
+    ["2019 Kubota zero turn mower"],
+  ])("classifies %j as machinery", (title) => {
+    expect(classifyVehicle(title, "ford")).toBe("machinery");
+  });
+
+  it.each([
+    ["1998 Honda Fortrax 300 4x4"],
+    ["2016 Honda Rancher 420"],
+    ["2019 Honda Foreman 520"],
+    ["2020 Honda Pioneer 700"],
+    ["2009 Honda Rubicon"],
+    ["2015 Suzuki King Quad 750"],
+  ])("classifies %j as powersports", (title) => {
+    expect(classifyVehicle(title, "honda")).toBe("powersports");
+  });
+
+  /*
+   * The collision list. Ford and Jeep use every one of these names on road
+   * vehicles, which is why they are absent from the powersports-model pattern —
+   * matching them would delete real trucks.
+   */
+  it.each([
+    ["2017 Ford Ranger"],
+    ["2022 Ford Maverick"],
+    ["2021 Ford F-150 Raptor"],
+    ["2019 Jeep Renegade"],
+    ["2008 Jeep Commander"],
+    ["2020 Land Rover Defender"],
+  ])("still calls %j a car", (title) => {
+    expect(classifyVehicle(title, "ford")).toBe("car");
+  });
+});

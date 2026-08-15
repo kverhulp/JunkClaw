@@ -132,3 +132,57 @@ describe("things Facebook files under Vehicles that are not cars", () => {
     expect(entry!.kind).toBe("unreadable");
   });
 });
+
+/**
+ * Prices that are not asking prices. Every figure here is from the corpus.
+ *
+ * A seller asking $1 for a 2017 Charger wants you to message them; a dealer
+ * putting $71 on a 2024 Tucson is advertising the weekly payment. Both anchor
+ * every judgement we make about the car to a number nobody means — and both sort
+ * straight to the top of "biggest gap".
+ */
+describe("listings with no real asking price", () => {
+  const kindOf = (rawTitle: string, priceCents: number) =>
+    buildShortlist([facts({ rawTitle, priceCents })], criteria)[0]!.kind;
+
+  it.each([
+    ["2017 Dodge Charger", 1_00],
+    ["2006 Chevrolet Cobalt", 0],
+    ["2014 BMW 3 Series", 123_00],
+    ["2008 Subaru Impreza", 1_234_00],
+    ["2015 Dodge Challenger", 1_234_567_00],
+  ])("sets aside %s at a placeholder price", (title, price) => {
+    expect(kindOf(title, price)).toBe("unpriced");
+  });
+
+  it.each([
+    ["2024 Hyundai Tucson", 71_00],
+    ["2023 Hyundai Kona", 195_00],
+    ["2021 GMC Canyon", 302_00],
+  ])("sets aside %s priced like a weekly payment", (title, price) => {
+    expect(kindOf(title, price)).toBe("unpriced");
+  });
+
+  /*
+   * The guard against over-correcting. comps.ts has a test that exists to stop a
+   * fixed price floor, because it deletes a bucket of genuine $200 beaters.
+   */
+  it.each([
+    ["2012 Chevrolet 1500 Regular Cab", 650_00],
+    ["2007 Mazda B-Series", 700_00],
+    ["2006 GMC 2500 HD", 800_00],
+    ["2009 Ford Focus", 1_000_00],
+  ])("keeps %s, which is cheap but real", (title, price) => {
+    expect(kindOf(title, price)).toBe("car");
+  });
+
+  it("calls a dirt bike a non-vehicle, not an unpriced car", () => {
+    // Both tests fail on it; the useful fact is that it is a dirt bike.
+    expect(kindOf("2025 Yamaha YZ250F", 98_00)).toBe("other");
+  });
+
+  it("sets aside machinery wearing a car make", () => {
+    expect(kindOf("2015 Ford tractor 3000", 8_500_00)).toBe("other");
+    expect(kindOf("1998 Honda Fortrax 300 4x4", 3_000_00)).toBe("other");
+  });
+});

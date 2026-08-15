@@ -2,6 +2,7 @@ import {
   classifyVehicle,
   extractVehicle,
   fitVerdict,
+  implausiblePrice,
   isNotAVehicleTitle,
   isPartsListing,
   parseTitleVehicle,
@@ -36,8 +37,13 @@ import type { EnrichedListing, ListingFacts, SavedCriteria, Vehicle } from "@jun
  * treatment. A bulldozer should never be shown; a Civic whose title we failed to
  * parse should be, because hiding a car we couldn't read is the same error as
  * quoting a price we couldn't support.
+ *
+ * `unpriced` is a real car with a number nobody means — "$1" on a 2017 Charger,
+ * "$71" on a 2024 Tucson. Separate from `other` because it is not a category
+ * mistake: the car is real, and every judgement we make about it is anchored to
+ * a price that isn't. Sorting by discount would put these at the very top.
  */
-export type ListingKind = "car" | "other" | "unreadable";
+export type ListingKind = "car" | "other" | "unreadable" | "unpriced";
 
 export interface ShortlistEntry {
   facts: ListingFacts;
@@ -78,6 +84,16 @@ export function buildShortlist(
       // was empty" look identical from the outside, which is the shape of every
       // silent-zero bug this codebase has already paid for.
       return { facts, vehicle: extracted.vehicle, verdict: null, kind: "other" as const };
+    }
+
+    /*
+     * Price last, so the label is truthful. A $98 Yamaha YZ250F fails both this
+     * and the car test, and reporting it as "no real asking price" would tell
+     * the user the wrong thing about why it went — it is a dirt bike, and that
+     * is the more useful fact.
+     */
+    if (implausiblePrice(facts.priceCents, extracted.vehicle.year) !== null) {
+      return { facts, vehicle: extracted.vehicle, verdict: null, kind: "unpriced" as const };
     }
 
     // fitVerdict wants the shape the server produces; locally we have the facts

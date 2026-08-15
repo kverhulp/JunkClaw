@@ -326,7 +326,7 @@ function onShortlist(entry: ShortlistEntry): boolean {
  * tab, badged as meeting criteria they were never tested against.
  */
 function cars(): ShortlistEntry[] {
-  return entries.filter((entry) => entry.kind !== "other");
+  return entries.filter((entry) => entry.kind !== "other" && entry.kind !== "unpriced");
 }
 
 function render(): void {
@@ -342,13 +342,27 @@ function render(): void {
   text("#count-fit", String(vehicles.filter(onShortlist).length));
   text("#count-all", String(vehicles.length));
 
-  const setAside = entries.length - vehicles.length;
+  /*
+   * Counted apart, because they are different objections and one number would
+   * hide the more surprising half. "Not a vehicle" is Facebook's taxonomy; "no
+   * real price" is a seller asking $1 for a Charger so that you have to message
+   * them, and someone watching eight cards vanish deserves to know which it was.
+   */
+  const notCars = entries.filter((e) => e.kind === "other").length;
+  const unpriced = entries.filter((e) => e.kind === "unpriced").length;
+  const parts: string[] = [];
+  if (notCars > 0) {
+    parts.push(
+      `${notCars} not ${notCars === 1 ? "a vehicle" : "vehicles"} (Facebook files trailers, machinery and bikes under Vehicles)`,
+    );
+  }
+  if (unpriced > 0) {
+    parts.push(`${unpriced} with no real asking price ($1, $123, or a weekly payment)`);
+  }
+
   const note = document.querySelector<HTMLElement>("#set-aside")!;
-  note.textContent =
-    setAside === 1
-      ? "1 listing set aside — not a car (Facebook files trailers, machinery and bikes under Vehicles)."
-      : `${setAside} listings set aside — not cars (Facebook files trailers, machinery and bikes under Vehicles).`;
-  note.hidden = setAside === 0;
+  note.textContent = parts.length > 0 ? `Set aside: ${parts.join("; ")}.` : "";
+  note.hidden = parts.length === 0;
 
   list.replaceChildren();
 

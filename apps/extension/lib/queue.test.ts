@@ -214,3 +214,85 @@ describe("failure reporting", () => {
     expect(queue.lastError).toBeNull();
   });
 });
+
+/**
+ * Surviving a service worker restart.
+ *
+ * The debounce holds a burst for 1.5s before sending, and MV3 kills an idle
+ * worker after ~30s. A worker recycled inside that window took the pending
+ * listings with it — each one a comp the corpus never got, and nothing anywhere
+ * said so.
+ */
+describe("snapshot and restore", () => {
+  it("hands back what is pending, attempt counts included", async () => {
+    const queue = new IngestQueue({
+      send: async () => { throw new Error("offline"); },
+      schedule: () => {},
+    });
+    queue.add([listing("a"), listing("b")]);
+    await queue.flush(); // fails, so both are requeued with attempts = 1
+
+    expect(queue.snapshot()).toHaveLength(2);
+    expect(queue.snapshot().every((e) => e.attempts === 1)).toBe(true);
+  });
+
+  it("resumes a batch a recycled worker would have lost", async () => {
+    const sent: string[] = [];
+    const restarted = new IngestQueue({
+      send: async (batch) => { sent.push(...batch.map((f) => f.urlHash)); },
+      schedule: (fn) => fn(),
+    });
+
+    restarted.restore([
+      { facts: listing("a"), attempts: 0 },
+      { facts: listing("b"), attempts: 0 },
+    ]);
+    await restarted.flush();
+
+    expect(sent).toHaveLength(2);
+  });
+
+  /*
+   * The subtle half. Without carrying attempts across, a listing that has
+   * already failed twice gets a fresh three tries every time the worker is
+   * recycled — which turns a bounded retry into a loop against a dead endpoint.
+   */
+  it("does not hand a failing listing a fresh set of retries", async () => {
+    const queue = new IngestQueue({
+      send: async () => { throw new Error("still offline"); },
+      schedule: () => {},
+    });
+
+    queue.restore([{ facts: listing("a"), attempts: MAX_ATTEMPTS - 1 }]);
+    const outcome = await queue.flush();
+
+    expect(outcome.dropped).toBe(1);
+    expect(queue.size).toBe(0);
+  });
+
+  it("drops entries that already exhausted their retries", () => {
+    const queue = new IngestQueue({ send: async () => {}, schedule: () => {} });
+    queue.restore([{ facts: listing("a"), attempts: MAX_ATTEMPTS }]);
+    expect(queue.size).toBe(0);
+  });
+
+  it("never clobbers a fresher sighting with a restored one", () => {
+    const queue = new IngestQueue({ send: async () => {}, schedule: () => {} });
+    queue.add([listing("a", 5_000_00)]);
+    queue.restore([{ facts: listing("a", 9_000_00), attempts: 2 }]);
+
+    expect(queue.size).toBe(1);
+    expect(queue.snapshot()[0]?.facts.priceCents).toBe(5_000_00);
+  });
+
+  it("reports every change, so the caller can persist it", () => {
+    let changes = 0;
+    const queue = new IngestQueue({
+      send: async () => {},
+      schedule: () => {},
+      onChange: () => { changes += 1; },
+    });
+    queue.add([listing("a")]);
+    expect(changes).toBeGreaterThan(0);
+  });
+});

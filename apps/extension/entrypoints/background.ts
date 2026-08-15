@@ -6,7 +6,7 @@ import type {
   StatusResponse,
 } from "@/lib/protocol";
 import { SessionDeals, type DealRecord } from "@/lib/deals";
-import { IngestQueue } from "@/lib/queue";
+import { IngestQueue, type QueueEntry } from "@/lib/queue";
 import { postEnrich, postIngest, postScore } from "@/lib/api";
 import { apiBaseUrl, apiToken, enabled } from "@/lib/settings";
 
@@ -60,20 +60,28 @@ let deals = new SessionDeals();
  */
 const SESSION_DEALS_KEY = "session:deals";
 const SESSION_STATS_KEY = "session:stats";
+const SESSION_QUEUE_KEY = "session:queue";
 
 const hydrated = (async () => {
   try {
-    const stored = await browser.storage.session.get([SESSION_DEALS_KEY, SESSION_STATS_KEY]);
+    const stored = await browser.storage.session.get([
+      SESSION_DEALS_KEY,
+      SESSION_STATS_KEY,
+      SESSION_QUEUE_KEY,
+    ]);
 
     const records = stored[SESSION_DEALS_KEY];
     if (Array.isArray(records)) deals = SessionDeals.restore(records as DealRecord[]);
 
     const saved = stored[SESSION_STATS_KEY] as Partial<SessionStats> | undefined;
     if (saved && typeof saved === "object") Object.assign(stats, saved);
+
+    return stored;
   } catch {
     // No session storage, or a cold profile. An empty panel is the truth then,
     // and it refills from the next sighting rather than staying wrong.
   }
+  return {} as Record<string, unknown>;
 })();
 
 /**
@@ -83,12 +91,35 @@ const hydrated = (async () => {
  */
 function persist(): void {
   void browser.storage.session
-    .set({ [SESSION_DEALS_KEY]: deals.all(), [SESSION_STATS_KEY]: stats })
+    .set({
+      [SESSION_DEALS_KEY]: deals.all(),
+      [SESSION_STATS_KEY]: stats,
+      [SESSION_QUEUE_KEY]: queue.snapshot(),
+    })
     .catch(() => {});
 }
 
+/*
+ * Listings queued but never sent. The debounce holds a burst for 1.5s, and a
+ * worker recycled inside that window took them with it — each one a comp the
+ * corpus never got, with nothing anywhere saying so. `restore` schedules its own
+ * flush, so they leave on the next tick rather than waiting for the user to
+ * scroll past something new.
+ *
+ * Chained after the queue exists rather than read inside the hydration itself:
+ * the ordering happens to work, but only because of where an await falls, and a
+ * guarantee that subtle is not one worth relying on.
+ */
+void hydrated.then((stored) => {
+  const pending = stored[SESSION_QUEUE_KEY];
+  if (Array.isArray(pending)) queue.restore(pending as QueueEntry[]);
+});
+
 const queue = new IngestQueue({
   schedule: (fn, ms) => setTimeout(fn, ms),
+  // Persist the pending set whenever it changes, so a recycled worker resumes
+  // the batch instead of losing it.
+  onChange: () => persist(),
   send: async (batch) => {
     try {
       const [baseUrl, token] = await Promise.all([apiBaseUrl.getValue(), apiToken.getValue()]);

@@ -33,6 +33,13 @@ export interface QueueDeps {
   send: (batch: ListingFacts[]) => Promise<void>;
   /** Injected so tests don't wait on real time. */
   schedule: (fn: () => void, ms: number) => void;
+  /**
+   * Called whenever the pending set changes, so a caller can persist it.
+   *
+   * A hook rather than a storage import, so the queue stays testable without a
+   * browser — which is the same reason `send` and `schedule` are injected.
+   */
+  onChange?: () => void;
 }
 
 export interface FlushOutcome {
@@ -49,14 +56,14 @@ export interface FlushOutcome {
   error: string | null;
 }
 
-interface Entry {
+export interface QueueEntry {
   facts: ListingFacts;
   attempts: number;
 }
 
 export class IngestQueue {
   /** Keyed by urlHash: re-scrolling past the same car updates it, never duplicates it. */
-  private readonly entries = new Map<string, Entry>();
+  private readonly entries = new Map<string, QueueEntry>();
   private flushScheduled = false;
   private flushing = false;
 
@@ -89,11 +96,42 @@ export class IngestQueue {
       });
     }
 
+    this.deps.onChange?.();
+
     if (this.entries.size >= FLUSH_THRESHOLD) {
       void this.flush();
       return;
     }
     this.scheduleFlush();
+  }
+
+  /**
+   * The pending entries as plain data, attempt counts included.
+   *
+   * These live in an MV3 service worker that Chrome kills after ~30s idle, and
+   * the debounce holds a burst for 1.5s before sending — so a worker recycled in
+   * that window took the listings with it. Every one was a comp the corpus never
+   * got, and nothing anywhere said so.
+   */
+  snapshot(): QueueEntry[] {
+    return [...this.entries.values()];
+  }
+
+  /**
+   * Re-queues what `snapshot()` produced and arranges a send.
+   *
+   * Attempt counts come back with the entries, so a listing that has already
+   * failed twice does not get a fresh three tries every time the worker is
+   * recycled — that is the difference between a bounded retry and a loop.
+   * A fresher sighting that arrived first always wins.
+   */
+  restore(entries: readonly QueueEntry[]): void {
+    for (const entry of entries) {
+      if (entry.attempts >= MAX_ATTEMPTS) continue;
+      if (this.entries.has(entry.facts.urlHash)) continue;
+      this.entries.set(entry.facts.urlHash, entry);
+    }
+    if (this.entries.size > 0) this.scheduleFlush();
   }
 
   scheduleFlush(): void {
@@ -124,6 +162,7 @@ export class IngestQueue {
     try {
       await this.deps.send(batch.map((e) => e.facts));
       this.lastError = null;
+      this.deps.onChange?.();
       return { sent: batch.length, requeued: 0, dropped: 0, error: null };
     } catch (cause) {
       const error = cause instanceof Error ? cause.message : String(cause);
@@ -143,6 +182,7 @@ export class IngestQueue {
         }
         requeued += 1;
       }
+      this.deps.onChange?.();
       if (requeued > 0) this.scheduleFlush();
       return { sent: 0, requeued, dropped, error };
     } finally {

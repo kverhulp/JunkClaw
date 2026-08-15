@@ -3,11 +3,13 @@ import { z } from "zod";
 import { AnalysisSchema, CompSetSchema, EnrichedListingSchema, NegotiationLimitsSchema } from "@junkclaw/schema";
 // Aliased: the exported tool below is also called getListingHistory.
 import {
+  compFetcher,
   db,
   getEnrichedListing,
   getListingHistory as fetchListingHistory,
   searchListings,
 } from "@junkclaw/db";
+import { buildCompSet, describeRung, rejectPriceOutliers } from "@junkclaw/core";
 
 /**
  * Tools the agents call. Each is a thin door into `@junkclaw/core` or the
@@ -47,8 +49,25 @@ export const getComps = createTool({
     ignoreTrim: z.boolean().default(false),
   }),
   outputSchema: CompSetSchema,
-  execute: async () => {
-    throw new Error("get-comps: not implemented — M1");
+  execute: async ({ listingId, yearBand, radiusKm, ignoreTrim }) => {
+    const subject = await getEnrichedListing(db(), listingId);
+    if (!subject) throw new Error(`get-comps: no listing ${listingId}`);
+
+    // One rung, chosen by the caller. The tool never walks the ladder itself:
+    // the agent decides how far to widen, and the number that comes back is
+    // always computed by core, never by the agent.
+    const rung = { yearBand, radiusKm, ignoreTrim, label: "" };
+    const candidates = await compFetcher(db())(subject, {
+      ...rung,
+      label: describeRung(rung),
+    });
+
+    // Same order of operations as walkWideningLadder: outliers are rejected
+    // before the count is taken, so a bucket that only clears MIN_COMPS on the
+    // back of two bait listings is still reported insufficient. An agent seeing
+    // different numbers from /api/score for the same rung would be reasoning
+    // about a market that does not exist.
+    return buildCompSet(rejectPriceOutliers(candidates), describeRung(rung));
   },
 });
 

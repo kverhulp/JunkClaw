@@ -26,6 +26,11 @@ through `npx --yes pnpm@10`. Install it properly if you get tired of the prefix.
 - **Guards only** (fast, run before pushing): `npx --yes pnpm@10 guards`
 - **Extension:** `cd apps/extension && npx --yes pnpm@10 build` → loads from
   `.output/chrome-mv3` via `chrome://extensions` → Load unpacked. Dev: `pnpm dev:ext`.
+  **Use `build:unpacked` when you're going to load it by hand**: it builds and
+  copies to `apps/extension/build/`, which — unlike `.output` — is not a
+  dot-directory macOS hides in the folder picker. A copy of the build parked
+  somewhere pickable has already gone stale once and cost an evening, because
+  Chrome keeps loading whatever path it was given.
 - **Web:** `cd apps/web && npx --yes pnpm@10 build`, or `pnpm dev:web` (:3000).
 - **DB:** `pnpm db:generate` then `pnpm db:migrate` (needs `DATABASE_URL`).
 - **Extension token** (M0, until the connect-extension page exists):

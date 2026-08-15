@@ -17,8 +17,8 @@ export function RoadScene() {
       aria-hidden
       className="relative h-[72px] overflow-hidden border-y-2 border-divider bg-surface"
     >
-      {/* Hills and trees. preserveAspectRatio="none" so the scene stretches to
-          any width rather than letterboxing. */}
+      {/* Hills only. preserveAspectRatio="none" so they stretch to any width
+          rather than letterboxing — a wider hill still reads as a hill. */}
       <svg
         width="100%"
         height="56"
@@ -29,21 +29,16 @@ export function RoadScene() {
         <polygon points="0,56 40,20 80,56" fill="var(--color-neutral-300)" />
         <polygon points="60,56 110,14 170,56" fill="var(--color-neutral-300)" />
         <polygon points="300,56 340,24 380,56" fill="var(--color-neutral-300)" />
-
-        <rect x="148" y="42" width="2" height="14" fill="var(--color-neutral-400)" />
-        <polygon points="149,24 143,44 155,44" fill="var(--color-neutral-400)" />
-        <polygon points="149,32 144,48 154,48" fill="var(--color-neutral-400)" />
-
-        <rect x="228" y="42" width="2" height="14" fill="var(--color-neutral-400)" />
-        <polygon points="229,24 223,44 235,44" fill="var(--color-neutral-400)" />
-        <polygon points="229,32 224,48 234,48" fill="var(--color-neutral-400)" />
-
-        <rect x="21" y="46" width="2" height="10" fill="var(--color-neutral-400)" />
-        <polygon points="22,32 17,48 27,48" fill="var(--color-neutral-400)" />
-
-        <rect x="361" y="46" width="2" height="10" fill="var(--color-neutral-400)" />
-        <polygon points="362,32 357,48 367,48" fill="var(--color-neutral-400)" />
       </svg>
+
+      {/* Trees sit outside that SVG, at fixed pixel size and placed by percent.
+          Inside it they inherited the horizontal stretch — roughly 3.5x at a
+          desktop width — and a conifer that wide stops looking like one. The
+          percentages are the mockup's x-coordinates over its 400-unit width. */}
+      <Tree kind="tall" left="35.75%" />
+      <Tree kind="tall" left="55.75%" />
+      <Tree kind="short" left="4.25%" />
+      <Tree kind="short" left="89.25%" />
 
       {/* Road surface, then the centre line painted on top of it. */}
       <div className="absolute inset-x-0 top-14 h-4 bg-neutral-300" />
@@ -58,6 +53,41 @@ export function RoadScene() {
       <Car direction="right" />
       <Car direction="left" />
     </div>
+  );
+}
+
+/**
+ * A conifer, bottom-aligned to the horizon where the road starts.
+ *
+ * Same vertices as the mockup, re-origined to a tight viewBox: the tall tree is
+ * 12x32 with two tiers, the short one 10x24 with one. `bottom-4` puts the trunk
+ * base on the road's top edge, since the road is the band's bottom 16px.
+ */
+function Tree({ kind, left }: { kind: "tall" | "short"; left: string }) {
+  const tall = kind === "tall";
+  const fill = "var(--color-neutral-400)";
+
+  return (
+    <svg
+      width={tall ? 12 : 10}
+      height={tall ? 32 : 24}
+      viewBox={tall ? "0 0 12 32" : "0 0 10 24"}
+      className="absolute bottom-4"
+      style={{ left }}
+    >
+      {tall ? (
+        <>
+          <rect x="5" y="18" width="2" height="14" fill={fill} />
+          <polygon points="6,0 0,20 12,20" fill={fill} />
+          <polygon points="6,8 1,24 11,24" fill={fill} />
+        </>
+      ) : (
+        <>
+          <rect x="4" y="14" width="2" height="10" fill={fill} />
+          <polygon points="5,0 0,16 10,16" fill={fill} />
+        </>
+      )}
+    </svg>
   );
 }
 

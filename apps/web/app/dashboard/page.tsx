@@ -5,7 +5,6 @@ import { useState } from "react";
 import { AppShell } from "../../components/layout/app-shell";
 import { CarSuperDataDrawer } from "../../components/catalogue/super-data-drawer";
 import {
-  Badge,
   Button,
   Card,
   CardBody,
@@ -18,6 +17,7 @@ import {
   Th,
 } from "../../components/ui/primitives";
 import { Crossfade } from "../../components/ui/motion";
+import { ShortlistSection } from "../../components/dashboard/shortlist-section";
 import { useDashboard } from "../../lib/data";
 import { money, signedMoney, titleCase } from "../../lib/format";
 import { supplierLabel, type CatalogueListing } from "../../mocks/vehicles";
@@ -28,10 +28,15 @@ export default function DashboardPage() {
 
   return (
     <AppShell
-      title="Overview"
-      description="Saved searches, price movement, and what you looked at recently."
-      actions={<Button variant="primary" size="sm">New saved search</Button>}
+      title="Dashboard"
+      description="Your shortlist, price movement, and what you looked at recently."
     >
+      {/* gap-10 rather than the gap-6 used between sections inside the loaded
+          block: the shortlist is its own thing, and the same spacing on both
+          sides would read as one long list. */}
+      <div className="flex flex-col gap-10">
+      <ShortlistSection />
+
       <Crossfade state={isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready"}>
       {isLoading ? (
         <DashboardSkeleton />
@@ -44,30 +49,11 @@ export default function DashboardPage() {
       ) : isEmpty || !data ? (
         <EmptyState
           title="Nothing saved yet"
-          body="Save a search from the catalogue and price drops will show up here."
+          body="Shortlist a car from the catalogue and price drops will show up here."
           action={<Button variant="primary" size="sm">Browse the catalogue</Button>}
         />
       ) : (
         <div className="flex flex-col gap-6">
-          <section aria-labelledby="saved-searches">
-            <h2 id="saved-searches" className="text-[17px] font-medium">
-              Saved searches
-            </h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              {data.savedSearches.map((search) => (
-                <Card key={search.id} className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-[15px] font-medium">{search.name}</p>
-                    {search.newSinceLastVisit > 0 ? (
-                      <Badge tone="accent">{search.newSinceLastVisit} new</Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-[13px] text-text-secondary">{search.supplier}</p>
-                </Card>
-              ))}
-            </div>
-          </section>
-
           <section aria-labelledby="price-drops">
             <h2 id="price-drops" className="text-[17px] font-medium">
               Price drops
@@ -156,6 +142,7 @@ export default function DashboardPage() {
         </div>
       )}
       </Crossfade>
+      </div>
 
       <CarSuperDataDrawer listing={selected} onClose={() => setSelected(null)} />
     </AppShell>

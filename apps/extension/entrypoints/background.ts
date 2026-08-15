@@ -49,20 +49,29 @@ const deals = new SessionDeals();
 const queue = new IngestQueue({
   schedule: (fn, ms) => setTimeout(fn, ms),
   send: async (batch) => {
-    const [baseUrl, token] = await Promise.all([apiBaseUrl.getValue(), apiToken.getValue()]);
-    // No token means the user hasn't connected the extension yet. Throwing keeps
-    // the batch queued, so listings gathered before setup aren't lost — they go
-    // out on the first flush after a token is pasted in.
-    if (!token) throw new Error("Extension is not connected — no API token set");
+    try {
+      const [baseUrl, token] = await Promise.all([apiBaseUrl.getValue(), apiToken.getValue()]);
+      // No token means the user hasn't connected the extension yet. Throwing keeps
+      // the batch queued, so listings gathered before setup aren't lost — they go
+      // out on the first flush after a token is pasted in.
+      if (!token) throw new Error("Extension is not connected — no API token set");
 
-    const ingested = await postIngest({ baseUrl, token }, { listings: batch });
-    stats.lastIngestAt = new Date().toISOString();
+      const ingested = await postIngest({ baseUrl, token }, { listings: batch });
+      stats.lastIngestAt = new Date().toISOString();
 
-    // Scoring is a separate round trip on purpose: ingest must succeed (and the
-    // corpus must grow) even when scoring is unavailable. A failure here is
-    // logged by omission — the badges simply stay at "…" — rather than sending
-    // the whole batch back to the queue for a re-ingest it doesn't need.
-    await scoreAndBroadcast({ baseUrl, token }, batch, ingested.listingIds);
+      // Scoring is a separate round trip on purpose: ingest must succeed (and the
+      // corpus must grow) even when scoring is unavailable. A failure here is
+      // logged by omission — the badges simply stay at "…" — rather than sending
+      // the whole batch back to the queue for a re-ingest it doesn't need.
+      await scoreAndBroadcast({ baseUrl, token }, batch, ingested.listingIds);
+    } catch (error) {
+      // The queue records the reason and retries; the panel has no other way to
+      // learn about it. Without this, a missing token or a dead API reads as
+      // "every card says Scoring… forever" with the explanation sitting
+      // unread in the worker — which is the first hour of a first test.
+      notifyPanel();
+      throw error;
+    }
   },
 });
 

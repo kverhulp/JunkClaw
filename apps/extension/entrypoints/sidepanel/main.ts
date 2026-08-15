@@ -2,7 +2,7 @@ import type { DealsResponse, RuntimeMessage } from "@/lib/protocol";
 import type { DealRecord } from "@/lib/deals";
 import { buildShortlist, type ShortlistEntry } from "@/lib/shortlist";
 import { dealHeadline, describeFailure } from "@/lib/copy";
-import { apiToken, readCriteria } from "@/lib/settings";
+import { apiToken, criteria, readCriteria } from "@/lib/settings";
 
 /**
  * The side panel: the shortlist of cars on the page that match what you asked for.
@@ -47,6 +47,11 @@ for (const chip of chips) {
 browser.runtime.onMessage.addListener((message: { kind?: string }) => {
   if (message.kind === "deals-updated") void refresh();
 });
+
+// Saving criteria in the options page has to re-judge what's already on screen.
+// Otherwise widening a budget appears to do nothing until the next car scrolls
+// past, and the obvious conclusion is that the setting didn't save.
+criteria.watch(() => void refresh());
 
 void refresh();
 

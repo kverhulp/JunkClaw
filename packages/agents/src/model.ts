@@ -20,3 +20,10 @@ export const EXTRACTION_MODEL =
 
 /** Offline grading. Never in the hot path, so correctness beats cost here. */
 export const EVAL_MODEL = process.env.JUNKCLAW_EVAL_MODEL ?? "anthropic/claude-opus-5";
+
+/**
+ * Web research. Must be a model whose provider executes search server-side —
+ * `google_search` grounding is a Gemini capability, not a portable one, so this
+ * is the one model id that is not freely swappable.
+ */
+export const RESEARCH_MODEL = process.env.JUNKCLAW_RESEARCH_MODEL ?? "google/gemini-flash-latest";

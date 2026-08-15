@@ -206,6 +206,44 @@ export const analyses = pgTable(
   (table) => [index("analyses_listing_idx").on(table.listingId, table.userId)],
 );
 
+/**
+ * Cached vehicle research — the external anchor for a market too thin to comp
+ * against itself. M0 measured 17% of cars as priceable from our own corpus; this
+ * is what the other 83% get instead.
+ *
+ * Keyed on the normalised vehicle rather than on a listing: two 2017 WRXs are
+ * one lookup, forever. Values move monthly at most, so a long life is correct —
+ * a slightly stale figure is a far smaller error than no figure.
+ */
+export const vehicleResearch = pgTable(
+  "vehicle_research",
+  {
+    id: text("id").primaryKey(),
+
+    /** Normalised the same way listings are, so a listing finds its own row. */
+    make: text("make").notNull(),
+    model: text("model").notNull(),
+    year: integer("year").notNull(),
+
+    /**
+     * Null when the research found no Canadian pricing — a real answer, and one
+     * worth caching so we don't pay to rediscover it. Never 0: zero reads as
+     * free rather than as unknown, and would then be served forever.
+     */
+    avgPriceCents: integer("avg_price_cents"),
+
+    /** The prose as written, so a human can check the number against it. */
+    research: text("research").notNull(),
+    /** Where the claims came from. An unsourced answer is never stored. */
+    sources: jsonb("sources").notNull().default([]),
+
+    researchedAt: timestamp("researched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("vehicle_research_key_idx").on(table.make, table.model, table.year),
+  ],
+);
+
 export const savedCriteria = pgTable("saved_criteria", {
   id: text("id").primaryKey(),
   userId: text("user_id")

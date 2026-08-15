@@ -6,6 +6,7 @@ export * from "./criteria-interpreter";
 export * from "./negotiation-copilot";
 export * from "./parse-sentinel";
 export * from "./eval-judge";
+export * from "./vehicle-researcher";
 
 import { listingExtractor } from "./listing-extractor";
 import { dedupAdjudicator } from "./dedup-adjudicator";
@@ -15,6 +16,7 @@ import { criteriaInterpreter } from "./criteria-interpreter";
 import { negotiationCopilot } from "./negotiation-copilot";
 import { parseSentinel } from "./parse-sentinel";
 import { evalJudge } from "./eval-judge";
+import { vehicleResearcher } from "./vehicle-researcher";
 
 /**
  * The roster. Agents go where the input is language or judgement; everything
@@ -29,4 +31,5 @@ export const agents = {
   negotiationCopilot,
   parseSentinel,
   evalJudge,
+  vehicleResearcher,
 };

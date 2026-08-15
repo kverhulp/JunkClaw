@@ -11,87 +11,44 @@
   :root {
     color-scheme: light;
 
-    --ground: #e4e6e2;
-    --surface: #fbfcfa;
-    --surface-2: #f1f3ef;
-    --sunken: #e9ece7;
-    --ink: #141815;
-    --ink-2: #4e5651;
-    --ink-3: #7c847e;
-    --line: #d3d8d1;
-    --line-2: #c2c8c0;
+    /* Modernist tokens with the AutoScout cream override, copied from
+       apps/web/app/globals.css. Token NAMES below are unchanged from this
+       prototype's first draft so the rest of the sheet still resolves; only the
+       values moved onto the shipped system.
 
-    --good: #1a7f4b;
-    --good-bg: #e1efe7;
-    --bad: #9a3412;
-    --bad-bg: #f5e7e0;
-    --idle: #5a6260;
-    --idle-bg: #e6eae5;
+       Light only: the web app sets `color-scheme: light` and the cream ground is
+       the identity. A dark variant would be a second design system. */
+    --ground: #faf5e9;
+    --surface: #faf5e9;
+    --surface-2: #f2e9d5;
+    --sunken: #e6d8be;
+    --ink: #201e1d;
+    --ink-2: rgb(32 30 29 / 0.7);
+    --ink-3: rgb(32 30 29 / 0.55);
+    --line: rgb(74 63 47 / 0.35);
+    --line-2: rgb(74 63 47 / 0.35);
 
-    --accent: #e8b004;
-    --accent-ink: #6f5300;
+    /* Red is the price claim and nothing else. "Below comparable asks" is the
+       one thing worth interrupting a scroll for, so it gets the only accent on
+       the page; "above" and "not enough data" stay in neutral ink. */
+    --good: #ae1800;
+    --good-bg: #fff2ef;
+    --bad: rgb(32 30 29 / 0.7);
+    --bad-bg: #e6d8be;
+    --idle: rgb(32 30 29 / 0.55);
+    --idle-bg: #fdfaf2;
 
-    --shadow: 0 1px 2px rgb(20 24 21 / 0.06), 0 12px 32px rgb(20 24 21 / 0.10);
-    --shadow-sm: 0 1px 2px rgb(20 24 21 / 0.08);
+    --accent: #ec3013;
+    --accent-ink: #ae1800;
 
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Mono", monospace;
-  }
+    --shadow: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+    --shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
 
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-
-      --ground: #0e100f;
-      --surface: #181c19;
-      --surface-2: #1f2421;
-      --sunken: #121614;
-      --ink: #e7ebe6;
-      --ink-2: #a3aba5;
-      --ink-3: #79817b;
-      --line: #2a302c;
-      --line-2: #39413b;
-
-      --good: #4fc489;
-      --good-bg: #12291e;
-      --bad: #e2724a;
-      --bad-bg: #2c1a12;
-      --idle: #8a928c;
-      --idle-bg: #21261f;
-
-      --accent: #f2c230;
-      --accent-ink: #f2c230;
-
-      --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px rgb(0 0 0 / 0.45);
-      --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
-    }
-  }
-
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-
-    --ground: #0e100f;
-    --surface: #181c19;
-    --surface-2: #1f2421;
-    --sunken: #121614;
-    --ink: #e7ebe6;
-    --ink-2: #a3aba5;
-    --ink-3: #79817b;
-    --line: #2a302c;
-    --line-2: #39413b;
-
-    --good: #4fc489;
-    --good-bg: #12291e;
-    --bad: #e2724a;
-    --bad-bg: #2c1a12;
-    --idle: #8a928c;
-    --idle-bg: #21261f;
-
-    --accent: #f2c230;
-    --accent-ink: #f2c230;
-
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px rgb(0 0 0 / 0.45);
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+    /* Archivo is the system face. Opened as a standalone file this falls back to
+       system-ui — the extension and the web app bundle the real thing. */
+    --sans: "Archivo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
 
   * { box-sizing: border-box; }
@@ -107,7 +64,7 @@
   :where(button, a, input, select, summary):focus-visible {
     outline: 2px solid var(--good);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 0;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -156,7 +113,7 @@
     display: flex;
     flex-direction: column;
     border: 1px solid var(--line-2);
-    border-radius: 10px;
+    border-radius: 0;
     background: var(--surface-2);
     box-shadow: var(--shadow);
     overflow: hidden;
@@ -185,7 +142,7 @@
     align-items: center;
     gap: 7px;
     padding: 5px 12px;
-    border-radius: 7px 7px 0 0;
+    border-radius: 0;
     background: var(--surface);
     border: 1px solid var(--line);
     border-bottom: none;
@@ -197,7 +154,7 @@
   .urlbar {
     flex: 1;
     padding: 5px 12px;
-    border-radius: 999px;
+    border-radius: 0;
     background: var(--surface);
     border: 1px solid var(--line);
     font: 400 12px/1.4 var(--mono);
@@ -212,10 +169,10 @@
     place-items: center;
     width: 28px;
     height: 28px;
-    border-radius: 7px;
+    border-radius: 0;
     border: 1px solid transparent;
     background: var(--accent);
-    color: #141815;
+    color: #ffffff;
     flex-shrink: 0;
   }
 
@@ -253,14 +210,14 @@
   .host-card {
     position: relative;
     border: 1px dashed var(--line-2);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 8px;
     background: transparent;
   }
 
   .host-photo {
     aspect-ratio: 4 / 3;
-    border-radius: 5px;
+    border-radius: 0;
     background: var(--sunken);
     display: grid;
     place-items: center;
@@ -270,7 +227,7 @@
 
   .host-line {
     height: 7px;
-    border-radius: 3px;
+    border-radius: 0;
     background: var(--sunken);
     margin-bottom: 6px;
   }
@@ -283,14 +240,14 @@
     left: 14px;
     font: 600 11px/1.4 var(--sans);
     padding: 3px 8px;
-    border-radius: 999px;
+    border-radius: 0;
     color: #fff;
-    background: #4b4b4b;
+    background: #2d2b2b;
     white-space: nowrap;
     box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
   }
-  .badge.below { background: #1a7f4b; }
-  .badge.above { background: #9a3412; }
+  .badge.below { background: #ec3013; }
+  .badge.above { background: #2d2b2b; }
   .badge .sub { font-weight: 400; opacity: 0.85; }
 
   /* ============================================================
@@ -323,9 +280,9 @@
     place-items: center;
     width: 26px;
     height: 26px;
-    border-radius: 7px;
+    border-radius: 0;
     background: var(--accent);
-    color: #141815;
+    color: #ffffff;
     flex-shrink: 0;
   }
 
@@ -355,7 +312,7 @@
     place-items: center;
     width: 30px;
     height: 30px;
-    border-radius: 7px;
+    border-radius: 0;
     border: 1px solid var(--line);
     background: var(--surface);
     color: var(--ink-2);
@@ -364,7 +321,7 @@
     transition: background 120ms ease, color 120ms ease;
   }
   .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
-  .iconbtn[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #141815; }
+  .iconbtn[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #ffffff; }
 
   .session {
     display: flex;
@@ -399,7 +356,7 @@
 
   .chip {
     padding: 4px 9px;
-    border-radius: 999px;
+    border-radius: 0;
     border: 1px solid var(--line);
     background: transparent;
     color: var(--ink-2);
@@ -427,7 +384,7 @@
     color: var(--ink-2);
     background: transparent;
     border: 1px solid var(--line);
-    border-radius: 6px;
+    border-radius: 0;
     padding: 5px 6px;
     cursor: pointer;
   }
@@ -446,7 +403,7 @@
 
   .deal {
     border: 1px solid var(--line);
-    border-radius: 9px;
+    border-radius: 0;
     background: var(--surface);
     overflow: hidden;
     /* The list is a flex column; without this, cards squash to fit instead of
@@ -472,7 +429,7 @@
 
   .thumb {
     aspect-ratio: 1;
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--sunken);
     display: grid;
     place-items: center;
@@ -522,7 +479,7 @@
     align-items: center;
     gap: 5px;
     padding: 3px 7px;
-    border-radius: 5px;
+    border-radius: 0;
     font: 500 11.5px/1.3 var(--sans);
     white-space: nowrap;
   }
@@ -554,12 +511,14 @@
     align-items: center;
     gap: 4px;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: 0;
     border: 1px solid var(--line);
     font: 500 10.5px/1.5 var(--sans);
     color: var(--ink-2);
   }
-  .tag.fit { border-color: color-mix(in oklab, var(--good) 35%, var(--line)); color: var(--good); }
+  /* Quiet: the accent is spent on the delta. A tag that appears on most rows
+     would spend it on the unremarkable. */
+  .tag.fit { border-color: var(--line); color: var(--ink-2); }
   .tag.warn { border-color: color-mix(in oklab, var(--bad) 35%, var(--line)); color: var(--bad); }
 
   /* ---------- expanded detail ---------- */
@@ -589,7 +548,7 @@
   .meter-track {
     position: relative;
     height: 6px;
-    border-radius: 3px;
+    border-radius: 0;
     background: var(--sunken);
     border: 1px solid var(--line);
   }
@@ -599,7 +558,7 @@
     top: 0;
     bottom: 0;
     background: color-mix(in oklab, var(--ink) 26%, transparent);
-    border-radius: 3px;
+    border-radius: 0;
   }
 
   .meter-median {
@@ -608,7 +567,7 @@
     bottom: -4px;
     width: 2px;
     background: var(--ink);
-    border-radius: 1px;
+    border-radius: 0;
   }
 
   .meter-mark {
@@ -724,7 +683,7 @@
   .btn {
     flex: 1;
     padding: 7px 10px;
-    border-radius: 6px;
+    border-radius: 0;
     border: 1px solid var(--line-2);
     background: var(--surface);
     color: var(--ink);
@@ -802,7 +761,7 @@
   .swatch.band {
     width: 13px;
     height: 7px;
-    border-radius: 2px;
+    border-radius: 0;
     background: color-mix(in oklab, var(--ink) 16%, transparent);
     border: 1px solid var(--line-2);
   }
@@ -854,7 +813,7 @@
   .q button {
     width: 24px;
     height: 24px;
-    border-radius: 6px;
+    border-radius: 0;
     border: 1px solid var(--line-2);
     background: var(--surface);
     color: var(--ink-2);
@@ -874,7 +833,7 @@
     gap: 10px;
     padding: 9px 10px;
     border: 1px dashed var(--line-2);
-    border-radius: 7px;
+    border-radius: 0;
   }
   .research p {
     flex: 1;
@@ -922,7 +881,7 @@
     gap: 3px;
     padding: 10px 11px;
     border: 1px solid var(--line);
-    border-radius: 7px;
+    border-radius: 0;
     background: var(--surface-2);
   }
   .ctx h3 {
@@ -943,7 +902,7 @@
     resize: vertical;
     padding: 10px;
     border: 1px solid var(--line-2);
-    border-radius: 7px;
+    border-radius: 0;
     background: var(--surface);
     color: var(--ink);
     font: 400 12.5px/1.6 var(--sans);
@@ -957,7 +916,7 @@
     grid-template-columns: 15px 1fr;
     gap: 9px;
     padding: 9px 10px;
-    border-radius: 7px;
+    border-radius: 0;
     font-size: 11.5px;
     line-height: 1.5;
   }
@@ -979,7 +938,7 @@
 
   .skel {
     height: 9px;
-    border-radius: 4px;
+    border-radius: 0;
     background: linear-gradient(90deg, var(--sunken), var(--surface-2), var(--sunken));
     background-size: 200% 100%;
     animation: shimmer 1.6s linear infinite;
@@ -993,7 +952,7 @@
     gap: 10px;
     padding: 9px 11px;
     border: 1px dashed var(--line-2);
-    border-radius: 9px;
+    border-radius: 0;
     font-size: 12px;
     color: var(--ink-3);
   }
@@ -1077,7 +1036,7 @@
     gap: 5px;
     padding: 7px 9px;
     border: 1px solid var(--line-2);
-    border-radius: 6px;
+    border-radius: 0;
     background: var(--surface);
   }
   .input span {
@@ -1102,7 +1061,7 @@
   .chipset { display: flex; flex-wrap: wrap; gap: 5px; }
   .opt {
     padding: 4px 9px;
-    border-radius: 999px;
+    border-radius: 0;
     border: 1px solid var(--line-2);
     background: transparent;
     color: var(--ink-2);
@@ -1129,7 +1088,7 @@
     gap: 10px;
     padding: 10px 11px;
     border: 1px solid var(--line);
-    border-radius: 7px;
+    border-radius: 0;
     background: var(--surface-2);
     cursor: pointer;
     text-align: left;
@@ -1140,7 +1099,7 @@
   .switch-track {
     width: 34px;
     height: 20px;
-    border-radius: 999px;
+    border-radius: 0;
     background: var(--line-2);
     flex-shrink: 0;
     position: relative;
@@ -1184,7 +1143,7 @@
     line-height: 1.55;
     color: var(--ink-3);
     padding: 9px 10px;
-    border-radius: 7px;
+    border-radius: 0;
     background: var(--surface-2);
     border: 1px solid var(--line);
   }

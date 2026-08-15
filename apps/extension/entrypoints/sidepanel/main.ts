@@ -1,3 +1,11 @@
+// Archivo at the three weights the system uses, latin subset only. Bundled
+// rather than fetched: the CSP on an extension page has no reason to reach a
+// font CDN, and a panel that waits on the network to render its own chrome
+// renders wrong on a slow connection.
+import "@fontsource/archivo/latin-400.css";
+import "@fontsource/archivo/latin-600.css";
+import "@fontsource/archivo/latin-800.css";
+
 import type { DealsResponse, RuntimeMessage } from "@/lib/protocol";
 import type { DealRecord } from "@/lib/deals";
 import { buildShortlist, type ShortlistEntry } from "@/lib/shortlist";

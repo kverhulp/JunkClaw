@@ -36,21 +36,38 @@ export function mountBadge(card: HTMLElement, state: BadgeState): void {
 }
 
 function render(root: ShadowRoot, state: BadgeState): void {
+  /*
+   * Modernist, adapted for a badge that sits on someone else's photograph.
+   *
+   * Two deliberate departures from the system as the panel applies it:
+   *
+   * Archivo is not used here. Loading a packaged font inside a content script
+   * needs `web_accessible_resources` on facebook.com, and widening the manifest
+   * for an 11px pill is a bad trade on an extension whose permissions have to
+   * survive store review. The system's own fallback stack is what renders.
+   *
+   * Solid fills and a shadow, rather than the tinted fills and hairlines used
+   * on cream. The badge has no controlled ground underneath it — it lands on
+   * whatever the seller photographed — so contrast has to come from the mark
+   * itself. Zero radius still holds; the system is flat.
+   */
   root.innerHTML = `
     <style>
       :host { all: initial; }
       .badge {
-        font: 600 12px/1.4 ui-sans-serif, system-ui, sans-serif;
+        font: 600 12px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        letter-spacing: 0.02em;
         padding: 4px 8px;
-        border-radius: 999px;
         color: #fff;
-        background: #4b4b4b;
+        background: #2d2b2b;
         white-space: nowrap;
-        box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+        box-shadow: 0 1px 4px rgb(45 43 43 / 0.45);
       }
-      .below { background: #1a7f4b; }
-      .above { background: #9a3412; }
-      .unknown { background: #4b4b4b; }
+      /* Below comparable asks is the one thing worth interrupting a scroll for,
+         and the accent is reserved for exactly that claim. */
+      .below { background: #ec3013; }
+      .above { background: #2d2b2b; }
+      .unknown { background: #605d5d; }
       .sub { font-weight: 400; opacity: 0.85; }
     </style>
     <div class="badge ${toneFor(state)}">${labelFor(state)}</div>

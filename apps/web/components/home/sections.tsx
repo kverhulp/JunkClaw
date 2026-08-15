@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Reveal, SpotlightCard } from "../ui/motion";
+import { cx } from "../ui/primitives";
 
 /**
  * Ported from AutoScout/JunkClaw Dashboard.dc.html.
@@ -108,43 +109,86 @@ function AgentRotator() {
   const [paused, setPaused] = useState(false);
 
   const hasAdvanced = useRef(false);
+  const barRef = useRef<HTMLSpanElement>(null);
 
+  /**
+   * Bumped when the tab becomes visible again, to restart the dwell.
+   *
+   * requestAnimationFrame is suspended while a tab is hidden, so the rotator
+   * correctly freezes — but the start timestamp keeps ageing. Without this,
+   * coming back after five minutes would blow through the elapsed check and
+   * snap to the next row instantly. Restarting gives the returning reader a
+   * full dwell on whatever they left on.
+   */
+  const [resumeKey, setResumeKey] = useState(0);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") setResumeKey((key) => key + 1);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  /**
+   * One requestAnimationFrame clock drives both the advance and the progress
+   * rule.
+   *
+   * Running the bar off a CSS animation and the advance off a timer would let
+   * them drift — and worse, pausing would freeze one and not the other. Sharing
+   * a clock means the rule always shows the actual time remaining.
+   *
+   * The bar is written straight to the DOM rather than through state: this
+   * updates every frame, and re-rendering the whole rotator sixty times a
+   * second to move one line would be absurd.
+   */
   useEffect(() => {
     if (paused) return;
 
-    let holdTimer: number;
-    let fadeTimer: number;
+    // First row holds for 2s, not 4.2s. At a flat interval the band sits on row
+    // one long enough that the page reads as broken rather than as paced.
+    const hold = hasAdvanced.current ? 4200 : 2000;
+    const FADE_MS = 280;
 
-    /**
-     * A self-rescheduling chain rather than an interval, so `index` stays out of
-     * the dependency array. Depending on it re-created the timer on every
-     * change, and the 280ms fade timeout was never cleaned up — between them the
-     * rotation advanced twice and then stalled.
-     *
-     * The first row is held for 2s instead of 4.2s. At a flat interval the band
-     * sits on row one long enough that the page reads as broken rather than as
-     * paced; moving early proves it is alive, then it settles into a rhythm
-     * someone can actually read at.
-     */
-    const schedule = (delay: number) => {
-      holdTimer = window.setTimeout(() => {
-        setVisible(false);
-        fadeTimer = window.setTimeout(() => {
-          setIndex((current) => (current + 1) % AGENTS.length);
-          setVisible(true);
-          hasAdvanced.current = true;
-          schedule(4200);
-        }, 280);
-      }, delay);
+    let frame = 0;
+    let fadeTimer = 0;
+    const start = performance.now();
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / hold);
+      if (barRef.current) barRef.current.style.transform = `scaleX(${progress})`;
+
+      if (progress < 1) {
+        frame = window.requestAnimationFrame(tick);
+        return;
+      }
+
+      setVisible(false);
+      fadeTimer = window.setTimeout(() => {
+        setIndex((current) => (current + 1) % AGENTS.length);
+        setVisible(true);
+        hasAdvanced.current = true;
+      }, FADE_MS);
     };
 
-    schedule(hasAdvanced.current ? 4200 : 2000);
+    frame = window.requestAnimationFrame(tick);
 
     return () => {
-      window.clearTimeout(holdTimer);
+      window.cancelAnimationFrame(frame);
       window.clearTimeout(fadeTimer);
     };
-  }, [paused]);
+  }, [paused, index, resumeKey]);
+
+  /** Jumping to a row restarts its dwell, so the rule matches what you chose. */
+  function show(next: number) {
+    if (next === index) return;
+    setVisible(false);
+    hasAdvanced.current = true;
+    window.setTimeout(() => {
+      setIndex(next);
+      setVisible(true);
+    }, 120);
+  }
 
   const agent = AGENTS[index]!;
 
@@ -184,8 +228,39 @@ function AgentRotator() {
         </div>
       </div>
 
-      <div className="tabular mt-3 text-[11px] text-text-muted">
-        {String(index + 1).padStart(2, "0")} / {String(AGENTS.length).padStart(2, "0")}
+      {/* The rule fills over the dwell, so "how long until the next one" is
+          visible rather than guessed. It is a 2px line — the system's own
+          vocabulary, not a widget borrowed from somewhere else. */}
+      <div className="mt-3 h-0.5 w-full bg-neutral-300">
+        <span
+          ref={barRef}
+          aria-hidden
+          className="block h-full origin-left bg-accent"
+          style={{ transform: "scaleX(0)" }}
+        />
+      </div>
+
+      {/* Numbered rather than dots: six is enough that "which one was the
+          research agent" is a real question, and a number can be aimed at. */}
+      <div className="mt-2 flex items-center gap-1">
+        {AGENTS.map((agent, position) => {
+          const active = position === index;
+          return (
+            <button
+              key={agent.label}
+              type="button"
+              onClick={() => show(position)}
+              aria-label={`Show ${agent.label.toLowerCase()}`}
+              aria-current={active ? "true" : undefined}
+              className={cx(
+                "tabular cursor-pointer px-1 py-0.5 text-[11px] transition-colors duration-150 ease-out",
+                active ? "font-extrabold text-accent-700" : "text-text-muted hover:text-text",
+              )}
+            >
+              {String(position + 1).padStart(2, "0")}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

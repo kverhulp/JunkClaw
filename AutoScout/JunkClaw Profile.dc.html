@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-dc413a56-a71a-4c5d-b70c-c3858ab2acad/styles.css">
+<script src="_ds/modernist-dc413a56-a71a-4c5d-b70c-c3858ab2acad/_ds_bundle.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --color-bg: #FAF5E9;
+    --color-surface: #F2E9D5;
+    --color-neutral-100: #FDFAF2;
+    --color-neutral-200: #F7EFDD;
+    --color-neutral-300: #E6D8BE;
+    --color-neutral-400: #D8C6A5;
+    --color-divider: color-mix(in srgb, #4a3f2f 35%, transparent);
+  }
+</style>
+</helmet>
+<div style="background:var(--color-bg);min-height:100vh;color:var(--color-text);font-family:var(--font-body)">
+  <div class="nav">
+    <a href="./JunkClaw Dashboard.dc.html" class="nav-brand" style="text-decoration:none;color:inherit;font-size:22px;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex:none"><rect width="18" height="18" fill="var(--color-accent)"></rect><circle cx="9" cy="9" r="6" fill="none" stroke="#ffffff" stroke-width="1.4"></circle><line x1="9" y1="9" x2="9.00" y2="3.00" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="14.71" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="12.53" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="5.47" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="3.29" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><circle cx="9" cy="9" r="1.4" fill="#ffffff"></circle></svg>AutoScout</a>
+    <a href="./JunkClaw Dashboard.dc.html">Dashboard</a>
+    <a href="./JunkClaw Badge Overlay.dc.html">Listings</a>
+    <a href="#" aria-current="page">Profile</a>
+    <a href="./JunkClaw Connect Extension.dc.html">Connect extension</a>
+  </div>
+
+  <div style="max-width:1000px;margin:0 auto;padding:40px 24px 80px;display:flex;gap:48px">
+    <div style="width:180px;flex:none">
+      <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="3">
+        <div onclick="{{ sec.select }}" style="padding:10px 12px;margin-left:-12px;font-size:14px;font-weight:{{ sec.weight }};cursor:pointer;color:{{ sec.color }};border-left:2px solid {{ sec.borderColor }}">{{ sec.label }}</div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1;min-width:0">
+      <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ true }}">
+        <h3 style="margin:0 0 4px">Profile</h3>
+        <p style="font-size:13px;opacity:0.6;margin:0 0 24px">Used for price-drop alerts. AutoScout never posts or messages on your behalf.</p>
+        <form style="display:flex;flex-direction:column;gap:14px;max-width:420px">
+          <div class="field">
+            <label>Display name</label>
+            <input class="input" type="text" value="Kevin">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input class="input" type="email" value="kevin@example.com">
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top:6px;align-self:flex-start">Save changes</button>
+        </form>
+      </sc-if>
+
+      <sc-if value="{{ isPreferences }}" hint-placeholder-val="{{ false }}">
+        <h3 style="margin:0 0 4px">Preferences</h3>
+        <p style="font-size:13px;opacity:0.6;margin:0 0 24px">Drives the Fit score and mutes listings that don't qualify.</p>
+        <form style="display:flex;flex-direction:column;gap:14px;max-width:420px">
+          <div class="field">
+            <label>Max budget</label>
+            <input class="input" type="number" value="18000">
+          </div>
+          <div class="field">
+            <label>Max mileage (km)</label>
+            <input class="input" type="number" value="150000">
+          </div>
+          <div class="field">
+            <label>Earliest year</label>
+            <input class="input" type="number" value="2014">
+          </div>
+          <div class="field">
+            <label>Search radius (km)</label>
+            <input class="input" type="number" value="100">
+          </div>
+          <div class="field">
+            <label>From</label>
+            <input class="input" type="text" value="Charlottetown">
+          </div>
+          <label class="radio" style="margin-top:2px">
+            <input type="checkbox" checked>
+            <span class="dot" style="border-radius:0"></span>
+            Hide listings that don't qualify
+          </label>
+          <button type="submit" class="btn btn-primary" style="margin-top:6px;align-self:flex-start">Save</button>
+        </form>
+
+        <div class="hr" style="max-width:420px"></div>
+
+        <h4 style="margin:0 0 12px">Connection</h4>
+        <div style="display:flex;flex-direction:column;gap:14px;max-width:420px">
+          <div class="field">
+            <label>Server</label>
+            <input class="input" type="url" value="https://autoscout.app">
+          </div>
+          <p style="font-size:12px;opacity:0.6;margin:0">Paste the token from the web app's "connect extension" page. AutoScout never asks for your Facebook password and never signs in as you.</p>
+          <div class="field">
+            <label>Token</label>
+            <input class="input" type="password" value="••••••••••••••••">
+          </div>
+          <button type="button" class="btn btn-secondary" style="align-self:flex-start">Save connection</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isWatchlist }}" hint-placeholder-val="{{ false }}">
+        <h3 style="margin:0 0 4px">Watchlist</h3>
+        <p style="font-size:13px;opacity:0.6;margin:0 0 24px">Everything scored against comparable asking prices — not sold prices.</p>
+        <table class="table">
+          <thead>
+            <tr><th>Listing</th><th>Asking</th><th>vs. similar asks</th><th>Days listed</th><th>Confidence</th><th></th></tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ rows }}" as="row" hint-placeholder-count="5">
+              <tr>
+                <td>{{ row.title }}</td>
+                <td style="font-variant-numeric:tabular-nums">${{ row.priceFmt }}</td>
+                <td style="font-variant-numeric:tabular-nums;color:var(--color-accent-700);font-weight:600">-${{ row.deltaFmt }}</td>
+                <td style="font-variant-numeric:tabular-nums">{{ row.days }}</td>
+                <td><span class="tag tag-neutral">{{ row.confidence }}</span></td>
+                <td><a class="btn btn-ghost" href="{{ row.url }}" target="_blank" rel="noopener">Open ↗</a></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </sc-if>
+    </div>
+  </div>
+  <footer style="background:var(--color-surface);color:var(--color-text)">
+    <div style="max-width:1200px;margin:0 auto;padding:48px 24px 32px;display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;font-family:var(--font-heading);font-weight:800;font-size:20px;color:var(--color-text);margin-bottom:6px"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex:none"><rect width="18" height="18" fill="var(--color-accent)"></rect><circle cx="9" cy="9" r="6" fill="none" stroke="#ffffff" stroke-width="1.4"></circle><line x1="9" y1="9" x2="9.00" y2="3.00" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="14.71" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="12.53" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="5.47" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="3.29" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><circle cx="9" cy="9" r="1.4" fill="#ffffff"></circle></svg>AutoScout</div>
+        <div style="font-size:13px;color:var(--color-text);opacity:0.7">Founded 2026</div>
+      </div>
+      <div style="display:flex;gap:64px;flex-wrap:wrap">
+        <div>
+          <h6 style="color:var(--color-text);opacity:0.75;margin-bottom:10px">Quick links</h6>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+            <a href="./JunkClaw Dashboard.dc.html" style="color:var(--color-text);text-decoration:none">Dashboard</a>
+            <a href="./JunkClaw Badge Overlay.dc.html" style="color:var(--color-text);text-decoration:none">Listings</a>
+            <a href="./JunkClaw Profile.dc.html" style="color:var(--color-text);text-decoration:none">Profile</a>
+            <a href="./JunkClaw Connect Extension.dc.html" style="color:var(--color-text);text-decoration:none">Connect extension</a>
+          </div>
+        </div>
+        <div>
+          <h6 style="color:var(--color-text);opacity:0.75;margin-bottom:10px">Legal</h6>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+            <a href="#" style="color:var(--color-text);text-decoration:none">Privacy policy</a>
+            <a href="#" style="color:var(--color-text);text-decoration:none">Terms of service</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:2px solid var(--color-divider);padding:16px 24px;max-width:1200px;margin:0 auto;font-size:12px;color:var(--color-text);opacity:0.55">© 2026 AutoScout. All rights reserved.</div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { section: "profile" };
+  renderVals() {
+    const active = this.state.section;
+    const defs = [
+      { id: "profile", label: "Profile" },
+      { id: "preferences", label: "Preferences" },
+      { id: "watchlist", label: "Watchlist" },
+    ];
+    const accent = "var(--color-accent-700)";
+    const sections = defs.map((d) => ({
+      label: d.label,
+      color: d.id === active ? accent : "var(--color-text)",
+      borderColor: d.id === active ? accent : "transparent",
+      weight: d.id === active ? 700 : 400,
+      select: () => this.setState({ section: d.id }),
+    }));
+    const fmt = (n) => n.toLocaleString("en-CA");
+    const raw = [
+      { title: "2019 Honda Civic LX", price: 14200, delta: 1400, days: 12, confidence: "high", url: "https://www.facebook.com/marketplace/item/1111111111" },
+      { title: "2020 Subaru Outback", price: 22500, delta: 2100, days: 21, confidence: "medium", url: "https://www.facebook.com/marketplace/item/2222222222" },
+      { title: "2016 Ford F-150 XLT", price: 19900, delta: 1950, days: 8, confidence: "high", url: "https://www.facebook.com/marketplace/item/3333333333" },
+      { title: "2018 Mazda3 GT", price: 13400, delta: 600, days: 30, confidence: "low", url: "https://www.facebook.com/marketplace/item/4444444444" },
+      { title: "2021 Kia Sportage", price: 24100, delta: 1100, days: 14, confidence: "medium", url: "https://www.facebook.com/marketplace/item/5555555555" },
+    ];
+    return {
+      sections,
+      isProfile: active === "profile",
+      isPreferences: active === "preferences",
+      isWatchlist: active === "watchlist",
+      rows: raw.map((r) => ({ ...r, priceFmt: fmt(r.price), deltaFmt: fmt(r.delta) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

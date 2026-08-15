@@ -1,63 +1,170 @@
-:root {
-  color-scheme: light dark;
-  --bg: #ffffff;
-  --fg: #14110f;
-  --muted: #6b6560;
-  --line: #e5e0da;
+@import "tailwindcss";
+
+/**
+ * Modernist tokens, with the AutoScout cream/beige override.
+ *
+ * Ported from the Modernist bundle under AutoScout/_ds, plus the per-page
+ * override documented in AutoScout/DESIGN_SYSTEM.md. Values are copied, not
+ * approximated — this app and the DC mockups must not drift.
+ *
+ * The system is flat and architectural: Archivo throughout, zero border-radius
+ * everywhere, 2px hairline rules instead of shadows and cards, and a single red
+ * accent used sparingly.
+ */
+@theme {
+  /* Cream override — replaces Modernist's stock cool grays. */
+  --color-bg: #faf5e9;
+  --color-surface: #f2e9d5;
+  --color-neutral-100: #fdfaf2;
+  --color-neutral-200: #f7efdd;
+  --color-neutral-300: #e6d8be;
+  --color-neutral-400: #d8c6a5;
+  /* Kept from Modernist's stock ramp: the dialog backdrop tints with it. */
+  --color-neutral-900: #2d2b2b;
+
+  /* Untouched from Modernist. Never adjust the red when asked to change
+     "colours" — see DESIGN_SYSTEM.md. */
+  --color-accent: #ec3013;
+  --color-accent-600: #dd2b0f;
+  /* Accent-coloured *text* uses 700: the raw accent is not dark enough for
+     body-size contrast on cream. */
+  --color-accent-700: #ae1800;
+  --color-accent-100: #fff2ef;
+  --color-accent-800: #7c1405;
+
+  --color-text: #201e1d;
+  --color-text-secondary: rgb(32 30 29 / 0.7);
+  --color-text-muted: rgb(32 30 29 / 0.55);
+
+  --color-divider: rgb(74 63 47 / 0.35);
+
+  --font-sans: var(--font-archivo), system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Flat by design. Not a placeholder. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14110f;
-    --fg: #f4f1ea;
-    --muted: #9a938c;
-    --line: #2c2724;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    margin: 0 0 8px;
+  }
+
+  h1 {
+    font-size: 42px;
+  }
+  h2 {
+    font-size: 32px;
+  }
+  h3 {
+    font-size: 25px;
+  }
+  h4 {
+    font-size: 20px;
+  }
+  h5 {
+    font-size: 16px;
+  }
+  h6 {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  :focus {
+    outline: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+
+  /* Digits that stack in a column must align, or scanning a grid fails. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Reduce duration rather than removing the state change: the user still needs
+     to see that something happened. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-* {
-  box-sizing: border-box;
-}
+@layer utilities {
+  /* Modernist's h6 treatment, available as a utility for non-heading labels. */
+  .micro {
+    font-size: 11px;
+    line-height: 1.4;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif;
-}
+  /* The system's structural device: a 2px rule, never a shadow or a card edge. */
+  .rule {
+    height: 2px;
+    border: 0;
+    background: var(--color-divider);
+  }
 
-main {
-  max-width: 42rem;
-  margin: 0 auto;
-  padding: 4rem 1.5rem;
-}
+  .scroll-x {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
 
-h1 {
-  font-size: 1.75rem;
-  margin: 0 0 0.25rem;
-}
+  .skeleton-pulse {
+    animation: skeleton-pulse 1.6s ease-in-out infinite;
+  }
 
-.muted {
-  color: var(--muted);
-}
-
-.status {
-  margin-top: 2rem;
-  border-top: 1px solid var(--line);
-  padding-top: 1.5rem;
-}
-
-.status dt {
-  font-weight: 600;
-  margin-top: 0.75rem;
-}
-
-.status dd {
-  margin: 0;
-  color: var(--muted);
-}
-
-code {
-  font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 0.875em;
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
 }

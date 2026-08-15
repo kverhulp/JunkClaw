@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-dc413a56-a71a-4c5d-b70c-c3858ab2acad/styles.css">
+<script src="_ds/modernist-dc413a56-a71a-4c5d-b70c-c3858ab2acad/_ds_bundle.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+  :root { --font-body-secondary: "IBM Plex Sans", var(--font-body); }
+</style>
+<style>
+  :root { --color-cream: #E8DCC3; --color-cream-bright: #F2EAD9; --color-beige: #C9B99B; }
+</style>
+<style>
+  :root {
+    --color-bg: #FAF5E9;
+    --color-surface: #F2E9D5;
+    --color-neutral-100: #FDFAF2;
+    --color-neutral-200: #F7EFDD;
+    --color-neutral-300: #E6D8BE;
+    --color-neutral-400: #D8C6A5;
+    --color-divider: color-mix(in srgb, #4a3f2f 35%, transparent);
+  }
+</style>
+</helmet>
+<div style="background:var(--color-bg);min-height:100vh;font-family:var(--font-body)">
+  <div class="nav">
+    <a href="./JunkClaw Dashboard.dc.html" class="nav-brand" style="text-decoration:none;color:inherit;font-size:22px;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex:none"><rect width="18" height="18" fill="var(--color-accent)"></rect><circle cx="9" cy="9" r="6" fill="none" stroke="#ffffff" stroke-width="1.4"></circle><line x1="9" y1="9" x2="9.00" y2="3.00" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="14.71" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="12.53" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="5.47" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="3.29" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><circle cx="9" cy="9" r="1.4" fill="#ffffff"></circle></svg>AutoScout</a>
+    <a href="./JunkClaw Dashboard.dc.html">Dashboard</a>
+    <a href="#" aria-current="page">Listings</a>
+    <a href="./JunkClaw Profile.dc.html">Profile</a>
+    <a href="./JunkClaw Connect Extension.dc.html">Connect extension</a>
+  </div>
+  <div style="max-width:1200px;margin:0 auto;padding:24px">
+    <div style="display:flex;align-items:center;gap:16px;border-bottom:2px solid var(--color-divider);margin-bottom:16px;padding-bottom:0">
+      <div style="padding:10px 16px 10px 0;font-size:13px;font-weight:600;border-bottom:2px solid var(--color-accent-700);color:var(--color-accent-700);margin-bottom:-2px">Facebook Marketplace</div>
+      <button onclick="{{ toggleFilters }}" class="btn btn-ghost" style="margin-left:auto;margin-bottom:6px">
+        <i data-lucide="sliders-horizontal" style="width:14px;height:14px"></i>Filters
+        <i data-lucide="{{ filtersChevron }}" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+
+    <sc-if value="{{ filtersOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-wrap:wrap;gap:20px 28px;align-items:flex-end;border-bottom:2px solid var(--color-divider);padding-bottom:18px;margin-bottom:20px">
+        <div style="width:170px">
+          <h6 style="margin-bottom:8px">Search</h6>
+          <input class="input" placeholder="Make or model">
+        </div>
+
+        <div style="width:150px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+            <h6 style="margin:0">Max price</h6>
+            <span style="font-size:12px;font-weight:700;font-variant-numeric:tabular-nums">{{ priceLabel }}</span>
+          </div>
+          <input type="range" min="2000" max="40000" step="500" value="{{ maxPrice }}" oninput="{{ onPriceInput }}" style="width:100%;accent-color:var(--color-accent);display:block">
+        </div>
+
+        <div style="width:150px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+            <h6 style="margin:0">Max mileage</h6>
+            <span style="font-size:12px;font-weight:700;font-variant-numeric:tabular-nums">{{ mileageLabel }}</span>
+          </div>
+          <input type="range" min="20000" max="300000" step="5000" value="{{ maxMileage }}" oninput="{{ onMileageInput }}" style="width:100%;accent-color:var(--color-accent);display:block">
+        </div>
+
+        <div style="width:140px;position:relative">
+          <h6 style="margin-bottom:8px">Year from</h6>
+          <div onclick="{{ toggleYearMenu }}" class="input" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+            <span>{{ yearLabel }}</span>
+            <i data-lucide="chevron-down" style="width:14px;height:14px;opacity:0.6"></i>
+          </div>
+          <sc-if value="{{ yearMenuOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:100%;left:0;right:0;margin-top:2px;background:var(--color-bg);border:2px solid var(--color-text);z-index:10">
+              <sc-for list="{{ yearOptions }}" as="yr" hint-placeholder-count="4">
+                <div onclick="{{ yr.select }}" style="display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:13px;cursor:pointer;background:{{ yr.bg }}">
+                  <i data-lucide="check" style="width:13px;height:13px;visibility:{{ yr.checkVisibility }}"></i>
+                  {{ yr.label }}
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
+        <div>
+          <h6 style="margin-bottom:8px">Transmission</h6>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ transmissionOptions }}" as="opt" hint-placeholder-count="2">
+              <div onclick="{{ opt.toggle }}" class="tag" style="padding:7px 12px;font-size:12px;cursor:pointer;border:1px solid var(--color-text);background:{{ opt.bg }};color:{{ opt.color }}">{{ opt.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div>
+          <h6 style="margin-bottom:8px">Fuel</h6>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ fuelOptions }}" as="opt" hint-placeholder-count="4">
+              <div onclick="{{ opt.toggle }}" class="tag" style="padding:7px 12px;font-size:12px;cursor:pointer;border:1px solid var(--color-text);background:{{ opt.bg }};color:{{ opt.color }}">{{ opt.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div>
+          <h6 style="margin-bottom:8px">Location</h6>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ locationOptions }}" as="opt" hint-placeholder-count="4">
+              <div onclick="{{ opt.toggle }}" class="tag" style="padding:7px 12px;font-size:12px;cursor:pointer;border:1px solid var(--color-text);background:{{ opt.bg }};color:{{ opt.color }}">{{ opt.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px 20px">
+      <sc-for list="{{ listings }}" as="item" hint-placeholder-count="8">
+        <div onclick="{{ item.open }}" style="position:relative;cursor:pointer">
+          <div style="position:relative;aspect-ratio:4/3;background:repeating-linear-gradient(135deg,var(--color-neutral-300),var(--color-neutral-300) 10px,var(--color-neutral-200) 10px,var(--color-neutral-200) 20px);display:flex;align-items:center;justify-content:center">
+            <span style="font-family:var(--font-mono, monospace);font-size:11px;color:var(--color-text);opacity:0.55">vehicle photo</span>
+            <div style="position:absolute;top:8px;left:8px;background:var(--color-bg);border:1.5px solid var(--color-text);padding:5px 9px;line-height:1.3">
+              <div style="font-family:var(--font-heading);font-weight:800;font-size:12px;color:var(--color-accent-700)">${{ item.deltaFmt }} below asks</div>
+              <div style="font-size:10px;opacity:0.6">{{ item.days }}d listed</div>
+            </div>
+          </div>
+          <div style="padding-top:10px">
+            <div style="font-family:var(--font-heading);font-weight:800;font-size:16px">${{ item.priceFmt }}</div>
+            <div style="font-family:var(--font-body-secondary);font-size:13px;margin-top:2px">{{ item.title }}</div>
+            <div style="font-family:var(--font-body-secondary);font-size:12px;opacity:0.55;margin-top:2px">{{ item.location }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{ hasSelected }}" hint-placeholder-val="{{ false }}">
+    <div onclick="{{ closeItem }}" class="dialog-backdrop">
+      <div onclick="{{ stopPropagation }}" class="dialog elev-lg" style="width:420px;background:var(--color-bg);padding:0;gap:0;max-height:90vh;overflow-y:auto">
+        <div style="position:relative;aspect-ratio:16/9;background:repeating-linear-gradient(135deg,var(--color-neutral-300),var(--color-neutral-300) 10px,var(--color-neutral-200) 10px,var(--color-neutral-200) 20px);display:flex;align-items:center;justify-content:center">
+          <span style="font-family:var(--font-mono,monospace);font-size:11px;opacity:0.55">vehicle photo</span>
+          <button onclick="{{ closeItem }}" class="btn btn-icon" style="position:absolute;top:8px;right:8px;background:var(--color-bg)"><i data-lucide="x" style="width:16px;height:16px"></i></button>
+        </div>
+        <div style="padding:20px">
+          <h4 style="margin:0 0 2px">{{ selected.title }}</h4>
+          <div style="font-family:var(--font-body-secondary);font-size:13px;opacity:0.6;margin-bottom:16px">{{ selected.location }}</div>
+          <div style="font-family:var(--font-heading);font-weight:800;font-size:22px;color:var(--color-accent-700);margin-bottom:4px">${{ selected.deltaFmt }} below similar asking prices</div>
+          <div style="font-family:var(--font-body-secondary);font-size:13px;opacity:0.65;margin-bottom:18px">Asking ${{ selected.priceFmt }} · {{ selected.days }}d listed</div>
+
+          <div style="border-top:2px solid var(--color-divider);padding-top:14px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px 16px">
+            <div><div style="font-size:11px;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em">Mileage</div><div style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums">{{ selected.mileageFmt }} km</div></div>
+            <div><div style="font-size:11px;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em">Transmission</div><div style="font-size:13px;font-weight:600">{{ selected.transmission }}</div></div>
+            <div><div style="font-size:11px;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em">Fuel type</div><div style="font-size:13px;font-weight:600">{{ selected.fuelType }}</div></div>
+            <div><div style="font-size:11px;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em">Exterior colour</div><div style="font-size:13px;font-weight:600">{{ selected.exteriorColor }}</div></div>
+            <div><div style="font-size:11px;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em">Seller</div><div style="font-size:13px;font-weight:600">{{ selected.sellerType }}</div></div>
+            <div><div style="font-size:11px;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em">Title status</div><div style="font-size:13px;font-weight:600">{{ selected.titleStatus }}</div></div>
+            <div><div style="font-size:11px;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em">Owners</div><div style="font-size:13px;font-weight:600">{{ selected.numOwners }}</div></div>
+            <div><div style="font-size:11px;opacity:0.55;text-transform:uppercase;letter-spacing:0.06em">Condition</div><div style="font-size:13px;font-weight:600">{{ selected.condition }}</div></div>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <a class="btn btn-primary" style="flex:1;justify-content:center" href="./JunkClaw Negotiate.dc.html">Negotiate</a>
+            <a class="btn btn-secondary" style="flex:1;justify-content:center" href="https://www.facebook.com/marketplace" target="_blank" rel="noopener">View on Facebook <i data-lucide="arrow-up-right" style="width:14px;height:14px;margin-left:4px"></i></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <footer style="background:var(--color-surface);color:var(--color-text)">
+    <div style="max-width:1200px;margin:0 auto;padding:48px 24px 32px;display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;font-family:var(--font-heading);font-weight:800;font-size:20px;color:var(--color-text);margin-bottom:6px"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex:none"><rect width="18" height="18" fill="var(--color-accent)"></rect><circle cx="9" cy="9" r="6" fill="none" stroke="#ffffff" stroke-width="1.4"></circle><line x1="9" y1="9" x2="9.00" y2="3.00" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="14.71" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="12.53" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="5.47" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="3.29" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><circle cx="9" cy="9" r="1.4" fill="#ffffff"></circle></svg>AutoScout</div>
+        <div style="font-size:13px;color:var(--color-text);opacity:0.7">Founded 2026</div>
+      </div>
+      <div style="display:flex;gap:64px;flex-wrap:wrap">
+        <div>
+          <h6 style="color:var(--color-text);opacity:0.75;margin-bottom:10px">Quick links</h6>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+            <a href="./JunkClaw Dashboard.dc.html" style="color:var(--color-text);text-decoration:none">Dashboard</a>
+            <a href="./JunkClaw Badge Overlay.dc.html" style="color:var(--color-text);text-decoration:none">Listings</a>
+            <a href="./JunkClaw Profile.dc.html" style="color:var(--color-text);text-decoration:none">Profile</a>
+            <a href="./JunkClaw Connect Extension.dc.html" style="color:var(--color-text);text-decoration:none">Connect extension</a>
+          </div>
+        </div>
+        <div>
+          <h6 style="color:var(--color-text);opacity:0.75;margin-bottom:10px">Legal</h6>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+            <a href="#" style="color:var(--color-text);text-decoration:none">Privacy policy</a>
+            <a href="#" style="color:var(--color-text);text-decoration:none">Terms of service</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:2px solid var(--color-divider);padding:16px 24px;max-width:1200px;margin:0 auto;font-size:12px;color:var(--color-text);opacity:0.55">© 2026 AutoScout. All rights reserved.</div>
+  </footer>
+</div></x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;filtersDefaultOpen&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Filters&quot;}}">
+class Component extends DCLogic {
+  state = { active: null, maxPrice: 40000, maxMileage: 300000, selected: null, yearFrom: "Any year", yearMenuOpen: false, activeTags: new Set(), filtersOpen: null };
+  toggleTag(label) {
+    this.setState((s) => {
+      const next = new Set(s.activeTags);
+      next.has(label) ? next.delete(label) : next.add(label);
+      return { activeTags: next };
+    });
+  }
+  makeTagOptions(labels) {
+    return labels.map((label) => {
+      const on = this.state.activeTags.has(label);
+      return {
+        label,
+        bg: on ? "var(--color-accent)" : "transparent",
+        color: on ? "var(--color-bg)" : "var(--color-text)",
+        toggle: () => this.toggleTag(label),
+      };
+    });
+  }
+  componentDidMount() { window.lucide && window.lucide.createIcons(); }
+  componentDidUpdate() { window.lucide && window.lucide.createIcons(); }
+  renderVals() {
+    const raw = [
+      { title: "2019 Honda Civic LX", price: 14200, delta: 1400, days: 12, location: "Charlottetown, PE", make: "Honda", model: "Civic", trim: "LX", year: 2019, mileageKm: 71000, transmission: "Automatic", fuelType: "Gas", exteriorColor: "Grey", condition: "Used", sellerType: "Private", titleStatus: "Clean", numOwners: 1 },
+      { title: "2017 Toyota Corolla", price: 11800, delta: 800, days: 5, location: "Stratford, PE", make: "Toyota", model: "Corolla", trim: "LE", year: 2017, mileageKm: 98000, transmission: "Automatic", fuelType: "Gas", exteriorColor: "White", condition: "Used", sellerType: "Private", titleStatus: "Clean", numOwners: 2 },
+      { title: "2020 Subaru Outback", price: 22500, delta: 2100, days: 21, location: "Cornwall, PE", make: "Subaru", model: "Outback", trim: "Premier", year: 2020, mileageKm: 54000, transmission: "Automatic", fuelType: "Gas", exteriorColor: "Blue", condition: "Used", sellerType: "Dealer", titleStatus: "Clean", numOwners: 1 },
+      { title: "2016 Ford F-150 XLT", price: 19900, delta: 1950, days: 8, location: "Summerside, PE", make: "Ford", model: "F-150", trim: "XLT", year: 2016, mileageKm: 132000, transmission: "Automatic", fuelType: "Gas", exteriorColor: "Black", condition: "Used", sellerType: "Private", titleStatus: "Clean", numOwners: 2 },
+      { title: "2018 Mazda3 GT", price: 13400, delta: 600, days: 30, location: "Charlottetown, PE", make: "Mazda", model: "Mazda3", trim: "GT", year: 2018, mileageKm: 87000, transmission: "Automatic", fuelType: "Gas", exteriorColor: "Red", condition: "Used", sellerType: "Private", titleStatus: "Clean", numOwners: 1 },
+      { title: "2015 Hyundai Elantra", price: 8700, delta: 300, days: 3, location: "Montague, PE", make: "Hyundai", model: "Elantra", trim: "GL", year: 2015, mileageKm: 145000, transmission: "Automatic", fuelType: "Gas", exteriorColor: "Silver", condition: "Used", sellerType: "Private", titleStatus: "Clean", numOwners: 3 },
+      { title: "2021 Kia Sportage", price: 24100, delta: 1100, days: 14, location: "Charlottetown, PE", make: "Kia", model: "Sportage", trim: "EX", year: 2021, mileageKm: 38000, transmission: "Automatic", fuelType: "Gas", exteriorColor: "White", condition: "Used", sellerType: "Dealer", titleStatus: "Clean", numOwners: 1 },
+      { title: "2014 Chevrolet Cruze", price: 6900, delta: 500, days: 45, location: "Alberton, PE", make: "Chevrolet", model: "Cruze", trim: "LT", year: 2014, mileageKm: 168000, transmission: "Automatic", fuelType: "Gas", exteriorColor: "Grey", condition: "Used", sellerType: "Private", titleStatus: "Salvage", numOwners: 2 },
+    ];
+    const fmt = (n) => n.toLocaleString("en-CA");
+    const listings = raw.map((l) => ({ ...l, priceFmt: fmt(l.price), deltaFmt: fmt(l.delta), mileageFmt: fmt(l.mileageKm) }));
+    listings.forEach((l) => { l.open = () => this.setState({ selected: l }); });
+    const yearOptions = ["Any year", "2020", "2015", "2010"].map((y) => ({
+      label: y,
+      bg: y === this.state.yearFrom ? "var(--color-neutral-200)" : "transparent",
+      checkVisibility: y === this.state.yearFrom ? "visible" : "hidden",
+      select: () => this.setState({ yearFrom: y, yearMenuOpen: false }),
+    }));
+    const filtersOpen = this.state.filtersOpen ?? (this.props.filtersDefaultOpen ?? true);
+    return {
+      filtersOpen,
+      filtersChevron: filtersOpen ? "chevron-up" : "chevron-down",
+      toggleFilters: () => this.setState({ filtersOpen: !filtersOpen }),
+      transmissionOptions: this.makeTagOptions(["Automatic", "Manual"]),
+      fuelOptions: this.makeTagOptions(["Gas", "Diesel", "Hybrid", "Electric"]),
+      locationOptions: this.makeTagOptions(["Charlottetown", "Summerside", "Cornwall", "Stratford"]),
+      yearLabel: this.state.yearFrom,
+      yearMenuOpen: this.state.yearMenuOpen,
+      yearOptions,
+      toggleYearMenu: () => this.setState((s) => ({ yearMenuOpen: !s.yearMenuOpen })),
+      listings,
+      selected: this.state.selected || {},
+      hasSelected: !!this.state.selected,
+      closeItem: () => this.setState({ selected: null }),
+      stopPropagation: (e) => e.stopPropagation(),
+      maxPrice: this.state.maxPrice,
+      maxMileage: this.state.maxMileage,
+      priceLabel: this.state.maxPrice >= 40000 ? "Any" : `$${fmt(this.state.maxPrice)}`,
+      mileageLabel: this.state.maxMileage >= 300000 ? "Any" : `${fmt(this.state.maxMileage)} km`,
+      onPriceInput: (e) => this.setState({ maxPrice: Number(e.target.value) }),
+      onMileageInput: (e) => this.setState({ maxMileage: Number(e.target.value) }),
+    };
+  }
+}
+</script>
+</body>
+</html>

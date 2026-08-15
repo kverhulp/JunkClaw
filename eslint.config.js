@@ -11,7 +11,18 @@ import tseslint from "typescript-eslint";
  * or the extension. This is lint-enforced, not a convention we remember.
  */
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/.next/**", "**/.output/**", "**/.wxt/**"] },
+  {
+    ignores: [
+      "**/dist/**",
+      "**/.next/**",
+      "**/.output/**",
+      "**/.wxt/**",
+      // Design Components export: mockups and a vendored runtime, not app source.
+      // It is the visual reference the web app is ported from, kept in-tree on
+      // purpose, but it is not ours to lint.
+      "AutoScout/**",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

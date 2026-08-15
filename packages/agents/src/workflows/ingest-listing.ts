@@ -1,7 +1,7 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import { EnrichedListingSchema, ListingFactsSchema } from "@junkclaw/schema";
-import { extractVehicle, normalizeVehicle } from "@junkclaw/core";
+import { judgeListing, normalizeVehicle } from "@junkclaw/core";
 import { db, upsertListing } from "@junkclaw/db";
 
 /**
@@ -28,8 +28,15 @@ import { db, upsertListing } from "@junkclaw/db";
  * quality. The measured skip rate is what decides whether M1 needs the
  * `listing-extractor` agent at all.
  */
-/** Skips are expected: the vehicles grid contains parts, trailers, and boats. */
-const ExtractionOutcome = z.enum(["exact", "partial", "skipped"]);
+/**
+ * Skips are expected: the vehicles grid contains parts, trailers, and boats.
+ *
+ * `rejected` is separate from `skipped` on purpose. Skipped means we could not
+ * read the title; rejected means we read it fine and it was a bulldozer, or a
+ * 2017 Charger listed at $1. Collapsing them would hide which of our two
+ * problems is actually growing.
+ */
+const ExtractionOutcome = z.enum(["exact", "partial", "skipped", "rejected"]);
 
 const ExtractStep = createStep({
   id: "extract",
@@ -39,16 +46,32 @@ const ExtractStep = createStep({
     extraction: ExtractionOutcome,
   }),
   execute: async ({ inputData }) => {
-    const result = extractVehicle(inputData.facts.rawTitle, inputData.facts.rawSubtitle);
-    if (result === null) {
-      // Not a vehicle ("Flat bed for truck"), or a title we can't read. Both are
-      // ordinary and neither is an error.
+    /*
+     * The same judgement the panel makes, from the same function. These used to
+     * differ — the panel applied a make allowlist, a machinery test and a price
+     * check, while this step ran `extractVehicle` alone — so the panel hid the
+     * bulldozers and the corpus kept them. 36 of 223 stored listings were things
+     * we would never show, setting the median in every bucket they landed in.
+     */
+    const judged = judgeListing({
+      title: inputData.facts.rawTitle,
+      subtitle: inputData.facts.rawSubtitle,
+      priceCents: inputData.facts.priceCents,
+    });
+
+    if (judged.kind === "unreadable") {
+      // A title we could not read. Ordinary, and not an error.
       return { listing: null, extraction: "skipped" as const };
     }
 
+    if (judged.kind !== "car") {
+      // Read fine, and not a car for sale at a price anyone means.
+      return { listing: null, extraction: "rejected" as const };
+    }
+
     return {
-      listing: { ...inputData.facts, vehicle: result.vehicle },
-      extraction: result.confidence,
+      listing: { ...inputData.facts, vehicle: judged.extraction!.vehicle },
+      extraction: judged.extraction!.confidence,
     };
   },
 });

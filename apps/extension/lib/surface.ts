@@ -18,9 +18,35 @@
 /** The `category_id` Facebook uses for Vehicles, read off its own category link. */
 const VEHICLES_CATEGORY_ID = "546583916084032";
 
-/** Mirrors the manifest's category patterns. Vehicle surfaces, not just cars. */
-const VEHICLE_CATEGORY_PATH =
-  /^\/marketplace\/category\/(vehicles|cars|trucks|motorcycles|powersports|rvs|trailers|boats)\b/;
+/**
+ * Every category slug Facebook files under Vehicles, read off its own rail.
+ *
+ * The rail is not eight tidy vehicle types — it is a type list *plus one slug
+ * per make*: `/marketplace/category/bmw`, `/marketplace/category/chevrolet`, and
+ * seventy others. A pattern matching only the types rejected every payload the
+ * moment someone clicked a make, and the panel went blank while Marketplace
+ * carried on showing cars.
+ *
+ * An allowlist rather than "any category", because the same rail carries
+ * `free`, `propertyrentals` and `search` — accepting every category slug would
+ * pour furniture into a corpus of cars. Collected live rather than guessed; a
+ * make Facebook adds later is a miss, which is the safe direction to be wrong.
+ */
+const VEHICLE_CATEGORY_SLUGS = new Set([
+  // Types.
+  "vehicles", "cars", "trucks", "motorcycles", "powersports", "boats", "trailers",
+  "rv-campers",
+  // Makes, as Facebook slugs them.
+  "acura", "alfa-romeo", "aston-martin", "audi", "bentley", "bmw", "buick",
+  "cadillac", "chevrolet", "chrysler", "coda", "daewoo", "daihatsu", "dodge",
+  "eagle", "ferrari", "fiat", "fisker", "ford", "freightliner", "genesis", "geo",
+  "gmc", "honda", "hummer", "hyundai", "infiniti", "isuzu", "jaguar", "jeep",
+  "kia", "lamborghini", "land-rover", "lexus", "lincoln", "lotus", "maserati",
+  "maybach", "mazda", "mclaren", "mercedes-benz", "mercury", "mini", "mitsubishi",
+  "nissan", "oldsmobile", "panoz", "plymouth", "pontiac", "porsche", "ram",
+  "rolls-royce", "saab", "saturn", "scion", "smart", "srt", "subaru", "suzuki",
+  "tesla", "toyota", "volkswagen", "volvo",
+]);
 
 /** `/marketplace/<location-id>/search/` — the shape the category rail produces. */
 const SCOPED_SEARCH_PATH = /^\/marketplace\/[^/]+\/search\/?$/;
@@ -40,7 +66,9 @@ export function isVehicleSurface(href: string): boolean {
   // that isn't a listing.
   if (url.pathname.startsWith("/marketplace/item/")) return true;
 
-  if (VEHICLE_CATEGORY_PATH.test(url.pathname)) return true;
+  if (url.pathname.startsWith("/marketplace/category/")) {
+    return VEHICLE_CATEGORY_SLUGS.has(url.pathname.split("/")[3] ?? "");
+  }
 
   /*
    * `/marketplace/search` and `/marketplace/<id>/search` are the same surface

@@ -100,3 +100,25 @@ describe("equipment sold under a car make", () => {
     expect(classifyVehicle(title, "ford")).toBe("car");
   });
 });
+
+/**
+ * Trim names that collide with powersports vocabulary.
+ *
+ * "2013 Ram 1500 Quad Cab" was being classified as an ATV and dropped, because
+ * `\bquad\b` matches Ram's trim name. Caught by auditing the real corpus.
+ */
+describe("cab trims that are not ATVs", () => {
+  it.each([
+    ["2013 Ram 1500 Quad Cab"],
+    ["2008 Dodge Ram 2500 Quad Cab SLT"],
+    ["2015 Nissan Titan King Cab"],
+    ["2011 Ford F-150 SuperCrew"],
+  ])("still calls %j a car", (title) => {
+    expect(classifyVehicle(title, "ram")).toBe("car");
+  });
+
+  it("still catches an actual quad", () => {
+    expect(classifyVehicle("2016 Suzuki quad 400", "suzuki")).toBe("powersports");
+    expect(classifyVehicle("2015 Suzuki King Quad 750", "suzuki")).toBe("powersports");
+  });
+});

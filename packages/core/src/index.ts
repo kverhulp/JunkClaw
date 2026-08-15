@@ -3,6 +3,7 @@ export * from "./title";
 export * from "./classify";
 export * from "./screen";
 export * from "./price";
+export * from "./judge";
 export * from "./dedup";
 export * from "./valuation";
 export * from "./comps";

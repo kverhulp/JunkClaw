@@ -49,9 +49,13 @@ const POWERSPORTS_ONLY_MAKES = new Set(
 /**
  * `e[\s-]?scooter` before the bare `scooter` on purpose: sellers write
  * "Escooter" as one word, and `\bscooter\b` does not match inside it.
+ *
+ * `quad(?!\s*cab)` because Ram sells the Quad Cab, and a bare `\bquad\b` was
+ * deleting "2013 Ram 1500 Quad Cab" — a real pickup — as an ATV. Found by
+ * auditing the corpus against this classifier rather than by reasoning about it.
  */
 const POWERSPORTS_KEYWORDS =
-  /\b(atv|quad|four[\s-]?wheeler|4[\s-]?wheeler|dirt\s?bike|pit\s?bike|motorcycle|motorbike|e[\s-]?scooter|scooter|e[\s-]?bike|moped|snowmobile|sled|side[\s-]?by[\s-]?side|sxs|utv|jet\s?ski|waverunner|dual\s?sport|sport\s?bike)\b/i;
+  /\b(atv|quad(?!\s*cab)|four[\s-]?wheeler|4[\s-]?wheeler|dirt\s?bike|pit\s?bike|motorcycle|motorbike|e[\s-]?scooter|scooter|e[\s-]?bike|moped|snowmobile|sled|side[\s-]?by[\s-]?side|sxs|utv|jet\s?ski|waverunner|dual\s?sport|sport\s?bike)\b/i;
 
 /**
  * Equipment that is not a road vehicle at all.

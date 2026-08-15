@@ -148,5 +148,19 @@ export const IngestResponseSchema = z.strictObject({
   accepted: z.number().int().nonnegative(),
   /** Server-side ids, keyed by urlHash, so the extension can ask for scores. */
   listingIds: z.record(z.string(), z.string()),
+  /**
+   * What the corpus refused, split by which gate stopped it.
+   *
+   * Reported rather than silently dropped: "we rejected nine tractors" and "the
+   * batch was empty" produce the same `accepted` count, and only one of those
+   * means something is wrong.
+   */
+  rejected: z
+    .strictObject({
+      notACar: z.number().int().nonnegative(),
+      noRealPrice: z.number().int().nonnegative(),
+      notAVehicleSale: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 export type IngestResponse = z.infer<typeof IngestResponseSchema>;

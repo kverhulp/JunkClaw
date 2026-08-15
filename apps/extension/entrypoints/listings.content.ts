@@ -40,6 +40,9 @@ export default defineContentScript({
      * actually collect is decided per payload by `isVehicleSurface`.
      */
     "https://www.facebook.com/marketplace/*/search*",
+    // One slug per make — /category/bmw, /category/ford. Which of those is a
+    // vehicle surface is decided at runtime by isVehicleSurface.
+    "https://www.facebook.com/marketplace/category/*",
   ],
   /*
    * `document_start`, matching the page-world half — and not an optimisation.

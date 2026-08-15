@@ -33,6 +33,9 @@ export default defineContentScript({
     // that does not load has nothing to forward, and the two halves are only
     // useful on pages where both are present.
     "https://www.facebook.com/marketplace/*/search*",
+    // One slug per make — /category/bmw, /category/ford. Which of those is a
+    // vehicle surface is decided at runtime by isVehicleSurface.
+    "https://www.facebook.com/marketplace/category/*",
   ],
   world: "MAIN",
   runAt: "document_start",

@@ -1,13 +1,4 @@
-import {
-  classifyVehicle,
-  extractVehicle,
-  fitVerdict,
-  implausiblePrice,
-  isNotAVehicleTitle,
-  isPartsListing,
-  parseTitleVehicle,
-  type FitVerdict,
-} from "@junkclaw/core";
+import { fitVerdict, judgeListing, type FitVerdict, type ListingKind } from "@junkclaw/core";
 import type { EnrichedListing, ListingFacts, SavedCriteria, Vehicle } from "@junkclaw/schema";
 
 /**
@@ -43,7 +34,7 @@ import type { EnrichedListing, ListingFacts, SavedCriteria, Vehicle } from "@jun
  * mistake: the car is real, and every judgement we make about it is anchored to
  * a price that isn't. Sorting by discount would put these at the very top.
  */
-export type ListingKind = "car" | "other" | "unreadable" | "unpriced";
+export type { ListingKind };
 
 export interface ShortlistEntry {
   facts: ListingFacts;
@@ -67,64 +58,29 @@ export function buildShortlist(
 ): ShortlistEntry[] {
   return listings.map((facts) => {
     /*
-     * Order matters. Rims, a flat bed and a car being parted out are all
-     * rejected inside `extractVehicle`, so testing them after it would file them
-     * under `unreadable` — the one bucket we deliberately keep visible.
+     * The same call `ingest-listing` makes. These were once two separate
+     * implementations and they disagreed: this one applied a make allowlist, a
+     * machinery test and a price check; ingest ran `extractVehicle` alone. The
+     * panel hid the bulldozers and the corpus kept them.
      */
-    if (isNotAVehicleTitle(facts.rawTitle) || isPartsListing(facts.rawTitle)) {
-      return { facts, vehicle: null, verdict: null, kind: "other" as const };
-    }
+    const judged = judgeListing({
+      title: facts.rawTitle,
+      subtitle: facts.rawSubtitle,
+      priceCents: facts.priceCents,
+    });
 
-    const extracted = extractVehicle(facts.rawTitle, facts.rawSubtitle);
-    if (!extracted) return { facts, vehicle: null, verdict: null, kind: "unreadable" as const };
-
-    if (!isCarListing(facts.rawTitle)) {
-      // Kept, with its vehicle, so the panel can report how many it set aside.
-      // Dropping them here would make "we filtered out 9 non-cars" and "the feed
-      // was empty" look identical from the outside, which is the shape of every
-      // silent-zero bug this codebase has already paid for.
-      return { facts, vehicle: extracted.vehicle, verdict: null, kind: "other" as const };
-    }
-
-    /*
-     * Price last, so the label is truthful. A $98 Yamaha YZ250F fails both this
-     * and the car test, and reporting it as "no real asking price" would tell
-     * the user the wrong thing about why it went — it is a dirt bike, and that
-     * is the more useful fact.
-     */
-    if (implausiblePrice(facts.priceCents, extracted.vehicle.year) !== null) {
-      return { facts, vehicle: extracted.vehicle, verdict: null, kind: "unpriced" as const };
+    const vehicle = judged.extraction?.vehicle ?? null;
+    if (judged.kind !== "car") {
+      // Kept, with whatever we managed to read, so the panel can report how many
+      // it set aside and why. Dropping them here would make "we filtered out 9
+      // non-cars" and "the feed was empty" look identical from the outside.
+      return { facts, vehicle, verdict: null, kind: judged.kind };
     }
 
     // fitVerdict wants the shape the server produces; locally we have the facts
     // plus the vehicle we just derived, which is exactly that shape.
-    const enriched: EnrichedListing = { ...facts, vehicle: extracted.vehicle };
-    return {
-      facts,
-      vehicle: extracted.vehicle,
-      verdict: fitVerdict(enriched, criteria),
-      kind: "car" as const,
-    };
+    const enriched: EnrichedListing = { ...facts, vehicle: vehicle! };
+    return { facts, vehicle, verdict: fitVerdict(enriched, criteria), kind: judged.kind };
   });
 }
 
-/**
- * Three checks, because no one of them is sufficient.
- *
- * `parseTitleVehicle` is the strict half of extraction: it requires the make to
- * be on a curated list, where `extractVehicle` takes whatever token follows the
- * year. That difference is the whole bug — "2012 Cat d6k", "2010 Black Series
- * morrison" and "2013 International starcraft" all yield a confident make from
- * the permissive path and none from the strict one.
- *
- * It is not enough on its own: the same list carries Yamaha and Kawasaki, which
- * build no cars, so `classifyVehicle` has to rule on what a recognised make
- * actually built. And a genuine Toyota being parted out is a real car that is
- * not for sale as one.
- */
-function isCarListing(title: string): boolean {
-  const named = parseTitleVehicle(title);
-  if (named === null) return false;
-  if (isPartsListing(title)) return false;
-  return classifyVehicle(title, named.make) === "car";
-}

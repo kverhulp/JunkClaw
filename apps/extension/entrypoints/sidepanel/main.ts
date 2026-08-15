@@ -8,8 +8,9 @@ import "@fontsource/archivo/latin-800.css";
 
 import type { DealsResponse, RuntimeMessage } from "@/lib/protocol";
 import type { DealRecord } from "@/lib/deals";
+import { compPosition } from "@junkclaw/core";
 import { buildShortlist, type ShortlistEntry } from "@/lib/shortlist";
-import { dealHeadline, describeFailure } from "@/lib/copy";
+import { compSummary, confidenceLabel, dealHeadline, describeFailure } from "@/lib/copy";
 import { apiToken, criteria, readCriteria } from "@/lib/settings";
 
 /**
@@ -35,6 +36,9 @@ const chips = [...document.querySelectorAll<HTMLButtonElement>(".chip")];
 let filter: Filter = "fit";
 let entries: ShortlistEntry[] = [];
 let analyses = new Map<string, DealRecord["analysis"]>();
+/** Which rows the user opened. Survives a re-render, which happens on every
+    new sighting — collapsing a row someone just opened is maddening. */
+const expanded = new Set<string>();
 
 document.querySelector<HTMLButtonElement>("#settings")!.addEventListener("click", () => {
   void browser.runtime.openOptionsPage();
@@ -206,6 +210,27 @@ function card(entry: ShortlistEntry): HTMLElement {
     }
   }
 
+  body.append(title, priceRow, delta, meta, tags);
+
+  // Only rows we can actually say more about are expandable. A disclosure that
+  // opens onto nothing is worse than no disclosure.
+  const detail = analysis === null ? null : detailFor(facts.externalId, analysis);
+  if (detail !== null) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "disclose";
+    const isOpen = expanded.has(facts.externalId);
+    toggle.setAttribute("aria-expanded", String(isOpen));
+    toggle.textContent = isOpen ? "Hide detail" : "Why this number";
+    toggle.addEventListener("click", () => {
+      if (expanded.has(facts.externalId)) expanded.delete(facts.externalId);
+      else expanded.add(facts.externalId);
+      render();
+    });
+    body.append(toggle);
+    if (isOpen) body.append(detail);
+  }
+
   const open = document.createElement("a");
   open.className = "open";
   // We store externalId, not the URL — the permalink is deterministic from it,
@@ -213,11 +238,109 @@ function card(entry: ShortlistEntry): HTMLElement {
   open.href = `https://www.facebook.com/marketplace/item/${facts.externalId}`;
   open.target = "_blank";
   open.rel = "noreferrer";
-  open.textContent = "Open listing ↗";
+  open.textContent = "View on Facebook Marketplace ↗";
 
-  body.append(title, priceRow, delta, meta, tags, open);
+  body.append(open);
   el.append(thumb, body);
   return el;
+}
+
+/**
+ * Why the number is what it is.
+ *
+ * Every figure here already arrives with the analysis and was previously
+ * discarded — the comp count, the band, the median, how far the ladder had to
+ * widen, days on market, drop count, confidence. In a market where most
+ * listings are near-singletons, showing the working is what separates a number
+ * someone acts on from one they ignore.
+ */
+function detailFor(externalId: string, analysis: NonNullable<DealRecord["analysis"]>): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "detail";
+
+  const summary = compSummary(analysis.comps);
+  if (summary !== null) {
+    const line = document.createElement("p");
+    line.className = "detail-summary";
+    line.textContent = summary;
+    el.append(line);
+  }
+
+  const position = compPosition(
+    // The listing's own price relative to the band the comps describe.
+    analysesPrice(externalId),
+    analysis.comps,
+  );
+  if (position !== null) {
+    const rail = document.createElement("div");
+    rail.className = "rail";
+    rail.innerHTML =
+      `<span class="rail-median" style="left:${position.medianPercent}%"></span>` +
+      `<span class="rail-mark" style="left:${position.pricePercent}%"></span>`;
+    const scale = document.createElement("div");
+    scale.className = "rail-scale";
+    scale.innerHTML =
+      `<span>${dollars(analysis.comps.p25PriceCents)}</span>` +
+      `<span>${dollars(analysis.comps.p75PriceCents)}</span>`;
+    el.append(rail, scale);
+  }
+
+  const stats = document.createElement("dl");
+  stats.className = "stats";
+  for (const [label, value] of [
+    ["Days on market", String(analysis.daysOnMarket)],
+    ["Price drops", String(analysis.priceDropCount)],
+    ["Confidence", confidenceLabel(analysis.comps.confidence)],
+  ] as const) {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    stats.append(dt, dd);
+  }
+  el.append(stats);
+
+  // The widening note is the honesty valve: it says out loud how far we had to
+  // reach to find anything to compare against.
+  if (analysis.comps.wideningNote !== null) {
+    const note = document.createElement("p");
+    note.className = "widening";
+    note.textContent = analysis.comps.wideningNote;
+    el.append(note);
+  }
+
+  /*
+   * Risk flags are empty until the risk-analyst agent ships, and the section is
+   * absent rather than empty-stated while that is true — "No risks found" is a
+   * claim we have not earned. Every flag carries the sentence that triggered it,
+   * because a warning nobody can check is worse than no warning.
+   */
+  if (analysis.riskFlags.length > 0) {
+    const heading = document.createElement("p");
+    heading.className = "detail-label";
+    heading.textContent = "Risk flags";
+    el.append(heading);
+
+    for (const flag of analysis.riskFlags) {
+      const item = document.createElement("div");
+      item.className = "flag";
+      const kind = document.createElement("h3");
+      kind.textContent = flag.kind.replace(/_/g, " ");
+      const conf = document.createElement("span");
+      conf.textContent = `${flag.confidence} confidence`;
+      const quote = document.createElement("blockquote");
+      quote.textContent = `"${flag.evidence}"`;
+      item.append(kind, conf, quote);
+      el.append(item);
+    }
+  }
+
+  return el;
+}
+
+/** The listing's own asking price, for positioning it against the comp band. */
+function analysesPrice(externalId: string): number {
+  return entries.find((e) => e.facts.externalId === externalId)?.facts.priceCents ?? 0;
 }
 
 function tag(label: string, kind: string): HTMLElement {

@@ -8,3 +8,4 @@ export * from "./scoring";
 export * from "./limits";
 export * from "./ingest";
 export * from "./extract";
+export * from "./position";

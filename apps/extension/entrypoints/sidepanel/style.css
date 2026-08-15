@@ -391,9 +391,143 @@ body {
   color: var(--color-text);
 }
 
+/* ---------- disclosure and detail ---------- */
+
+.disclose {
+  display: block;
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font: 400 12px/1.4 var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.disclose:hover {
+  color: var(--color-text);
+}
+
+.detail {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.detail-summary {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.detail-label {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* The p25–p75 rail with the median ticked and this listing marked. A flat bar,
+   not a rounded pill: the system has no radius, and the marker is the only
+   round thing because a dot is a dot. */
+.rail {
+  position: relative;
+  height: 6px;
+  background: var(--color-neutral-300);
+}
+
+.rail-median {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--color-text);
+}
+
+.rail-mark {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+.rail-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 12px;
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+.stats dt {
+  color: var(--color-text-secondary);
+}
+
+.stats dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.widening {
+  margin: 12px 0 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--color-divider);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.flag {
+  margin-top: 8px;
+}
+
+.flag h3 {
+  display: inline;
+  /* Sibling of the confidence span, not a block above it — they read as one
+     line. Without the gap they butt straight into each other. */
+  margin: 0 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.flag span {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.flag blockquote {
+  margin: 4px 0 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--color-divider);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
 .open {
   display: inline-block;
-  margin-top: 10px;
+  margin-top: 12px;
   font-size: 13px;
   color: var(--color-accent-700);
   text-underline-offset: 2px;

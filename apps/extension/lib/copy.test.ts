@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Analysis } from "@junkclaw/schema";
-import { dealHeadline, describeFailure } from "./copy";
+import { compSummary, confidenceLabel, dealHeadline, describeFailure } from "./copy";
 
 function analysis(overrides: Partial<Analysis> = {}): Analysis {
   return {
@@ -11,7 +11,7 @@ function analysis(overrides: Partial<Analysis> = {}): Analysis {
     daysOnMarket: 12,
     priceDropCount: 1,
     comps: {
-      listingIds: [],
+      listingIds: ["a", "b", "c", "d", "e", "f"],
       medianPriceCents: 1_030_000,
       p25PriceCents: 940_000,
       p75PriceCents: 1_160_000,
@@ -97,5 +97,38 @@ describe("describeFailure", () => {
     expect(describeFailure({ kind: "over_mileage", limitKm: 200_000, actualKm: 301_000 })).toBe(
       "Over 200,000 km",
     );
+  });
+});
+
+describe("compSummary", () => {
+  it("says how many listings the delta was measured against, and their median", () => {
+    expect(compSummary(analysis().comps)).toBe("vs. 6 comparable listings · median asking $10,300");
+  });
+
+  it("reads correctly when the comp set is a single listing", () => {
+    const one = { ...analysis().comps, listingIds: ["a"] };
+    expect(compSummary(one)).toBe("vs. 1 comparable listing · median asking $10,300");
+  });
+
+  // medianPriceCents is 0 on an insufficient set — a sentinel, not a price. A
+  // summary built from it would read "median asking $0".
+  it("has nothing to say about an insufficient comp set", () => {
+    const thin = { ...analysis().comps, confidence: "insufficient" as const, medianPriceCents: 0 };
+    expect(compSummary(thin)).toBeNull();
+  });
+});
+
+describe("confidenceLabel", () => {
+  it.each([
+    ["high", "High"],
+    ["medium", "Medium"],
+    ["low", "Low"],
+  ] as const)("titles %s as %s", (confidence, expected) => {
+    expect(confidenceLabel(confidence)).toBe(expected);
+  });
+
+  // Never "Insufficient" — the user-facing wording for this state is fixed.
+  it("renders an insufficient set as 'Not enough data'", () => {
+    expect(confidenceLabel("insufficient")).toBe("Not enough data");
   });
 });

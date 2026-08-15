@@ -1,5 +1,5 @@
 import type { FitFailure } from "@junkclaw/core";
-import type { Analysis } from "@junkclaw/schema";
+import type { Analysis, CompConfidence, CompSet } from "@junkclaw/schema";
 
 /**
  * The words the panel puts on screen.
@@ -61,6 +61,36 @@ export function describeFailure(failure: FitFailure): string {
       return `Newer than ${failure.limitYear}`;
     case "over_mileage":
       return `Over ${failure.limitKm.toLocaleString("en-CA")} km`;
+  }
+}
+
+/**
+ * What the delta was measured against.
+ *
+ * The number alone asks to be taken on faith; "vs. 6 comparable listings"
+ * shows its working, and the count is the first thing anyone doubts in a
+ * market this thin. "median asking" rather than the mockup's bare "asking" —
+ * one word, and it removes the question of whose price $10,300 is.
+ */
+export function compSummary(comps: CompSet): string | null {
+  if (comps.confidence === "insufficient") return null;
+
+  const n = comps.listingIds.length;
+  const noun = n === 1 ? "comparable listing" : "comparable listings";
+  return `vs. ${n} ${noun} · median asking ${dollars(comps.medianPriceCents)}`;
+}
+
+/** Never "Insufficient": the wording for that state is fixed product-wide. */
+export function confidenceLabel(confidence: CompConfidence): string {
+  switch (confidence) {
+    case "insufficient":
+      return "Not enough data";
+    case "low":
+      return "Low";
+    case "medium":
+      return "Medium";
+    case "high":
+      return "High";
   }
 }
 

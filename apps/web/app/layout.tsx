@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Archivo } from "next/font/google";
 import type { ReactNode } from "react";
+import { RoadProgress } from "../components/layout/road-progress";
 import "./globals.css";
 
 /**
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         <div id="content">{children}</div>
+        <RoadProgress />
       </body>
     </html>
   );

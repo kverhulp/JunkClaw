@@ -141,6 +141,32 @@ export const WIDENING_LADDER: WideningRung[] = [
   { yearBand: 2, radiusKm: 500, ignoreTrim: true, label: "±2 years, any trim, Maritime-wide" },
 ];
 
+/**
+ * How a rung reads to a human.
+ *
+ * `wideningNote` is rendered verbatim in the panel ("Comp set widened: ±1 year,
+ * any trim, within 250 km"), so a rung an agent assembles by hand has to be
+ * worded the same way as one the deterministic ladder walked. A test asserts
+ * every canonical rung describes itself back to its own label.
+ */
+export function describeRung(rung: WideningRung): string {
+  const parts: string[] = [];
+
+  if (rung.yearBand === 0) {
+    // The tightest rung is the only one that promises trim, so it says so.
+    parts.push(rung.ignoreTrim ? "same year" : "same year and trim");
+  } else {
+    parts.push(`\u00b1${rung.yearBand} ${rung.yearBand === 1 ? "year" : "years"}`);
+  }
+
+  if (rung.ignoreTrim) parts.push("any trim");
+
+  // Beyond the province, distance stops being the useful description.
+  parts.push(rung.radiusKm >= 500 ? "Maritime-wide" : `within ${rung.radiusKm} km`);
+
+  return parts.join(", ");
+}
+
 /** Injected so the ladder is testable without a database. */
 export type CompFetcher = (
   subject: EnrichedListing,

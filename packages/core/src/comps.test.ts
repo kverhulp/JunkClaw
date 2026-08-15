@@ -4,6 +4,7 @@ import {
   MIN_COMPS,
   WIDENING_LADDER,
   buildCompSet,
+  describeRung,
   confidenceFor,
   rejectPriceOutliers,
   walkWideningLadder,
@@ -173,5 +174,32 @@ describe("the ladder cleans before it counts", () => {
     const kept = rejectPriceOutliers(withBait);
     expect(kept).toHaveLength(4);
     expect(kept.every((c) => !c.listingId.startsWith("bait"))).toBe(true);
+  });
+});
+
+describe("describeRung", () => {
+  /*
+   * The strongest available check: every canonical rung must describe itself
+   * back to the label already written in WIDENING_LADDER. That keeps a rung an
+   * agent assembles by hand worded the same as one the deterministic ladder
+   * walked, which matters because wideningNote is rendered verbatim to the user.
+   */
+  it("reproduces the label of every rung on the canonical ladder", () => {
+    for (const rung of WIDENING_LADDER) {
+      expect(describeRung(rung)).toBe(rung.label);
+    }
+  });
+
+  it("describes a year band the ladder does not itself use", () => {
+    expect(describeRung({ yearBand: 3, radiusKm: 100, ignoreTrim: true, label: "" })).toBe(
+      "±3 years, any trim, within 100 km",
+    );
+  });
+
+  // 500 km is wider than the province and reads as a region, not a distance.
+  it("calls the widest radius Maritime-wide rather than quoting kilometres", () => {
+    expect(describeRung({ yearBand: 0, radiusKm: 900, ignoreTrim: true, label: "" })).toContain(
+      "Maritime-wide",
+    );
   });
 });

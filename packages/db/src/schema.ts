@@ -3,18 +3,31 @@ import {
   index,
   integer,
   jsonb,
-  pgTable,
+  pgSchema,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+/**
+ * Everything lives in a dedicated `junkclaw` schema rather than in `public`.
+ *
+ * The database we point at already holds a `listings` and a `listing_snapshots`
+ * table from an earlier spike, with a different shape — dollars as numeric
+ * where we use integer cents, and six seller-identity columns we deliberately
+ * do not have. Sharing `public` would collide on those two names, and the
+ * failure mode if it ever silently did not is a 100x pricing error.
+ *
+ * Same pattern Mastra already uses here for its own memory tables.
+ */
+export const junkclaw = pgSchema("junkclaw");
 
 /* ------------------------------------------------------------------ *
  * Auth (better-auth's expected shape). Multi-user from day one, so
  * everything user-owned below is scoped by userId.
  * ------------------------------------------------------------------ */
 
-export const user = pgTable("user", {
+export const user = junkclaw.table("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -24,7 +37,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const session = pgTable("session", {
+export const session = junkclaw.table("session", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -37,7 +50,7 @@ export const session = pgTable("session", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const account = pgTable("account", {
+export const account = junkclaw.table("account", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -55,7 +68,7 @@ export const account = pgTable("account", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const verification = pgTable("verification", {
+export const verification = junkclaw.table("verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
@@ -75,7 +88,7 @@ export const verification = pgTable("verification", {
  * Only the SHA-256 of the token is stored. A leaked database should not hand
  * anyone a working credential.
  */
-export const extensionTokens = pgTable(
+export const extensionTokens = junkclaw.table(
   "extension_tokens",
   {
     id: text("id").primaryKey(),
@@ -100,7 +113,7 @@ export const extensionTokens = pgTable(
  * picture of a car is not personal information; the seller is.
  * ------------------------------------------------------------------ */
 
-export const listings = pgTable(
+export const listings = junkclaw.table(
   "listings",
   {
     id: text("id").primaryKey(),
@@ -167,7 +180,7 @@ export const listings = pgTable(
  * Price history. One row per observed price change — drops are leverage, and
  * this table is the only reason we can say "listed 3 weeks ago, dropped once".
  */
-export const listingSnapshots = pgTable(
+export const listingSnapshots = junkclaw.table(
   "listing_snapshots",
   {
     id: text("id").primaryKey(),
@@ -180,7 +193,7 @@ export const listingSnapshots = pgTable(
   (table) => [index("listing_snapshots_listing_idx").on(table.listingId, table.observedAt)],
 );
 
-export const analyses = pgTable(
+export const analyses = junkclaw.table(
   "analyses",
   {
     id: text("id").primaryKey(),
@@ -215,7 +228,7 @@ export const analyses = pgTable(
  * one lookup, forever. Values move monthly at most, so a long life is correct —
  * a slightly stale figure is a far smaller error than no figure.
  */
-export const vehicleResearch = pgTable(
+export const vehicleResearch = junkclaw.table(
   "vehicle_research",
   {
     id: text("id").primaryKey(),
@@ -244,7 +257,7 @@ export const vehicleResearch = pgTable(
   ],
 );
 
-export const savedCriteria = pgTable("saved_criteria", {
+export const savedCriteria = junkclaw.table("saved_criteria", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -260,7 +273,7 @@ export const savedCriteria = pgTable("saved_criteria", {
  * function timeout cannot kill a negotiation.
  * ------------------------------------------------------------------ */
 
-export const negotiations = pgTable(
+export const negotiations = junkclaw.table(
   "negotiations",
   {
     id: text("id").primaryKey(),
@@ -290,7 +303,7 @@ export const negotiations = pgTable(
  * Drafts the user approved and the outcome. Seller replies are NOT stored —
  * message contents are personal information and stay in the user's browser.
  */
-export const negotiationDrafts = pgTable(
+export const negotiationDrafts = junkclaw.table(
   "negotiation_drafts",
   {
     id: text("id").primaryKey(),
@@ -311,7 +324,7 @@ export const negotiationDrafts = pgTable(
  * diff a stored payload against the expected schema when the rate alarms.
  * This is how we learn about breakage from telemetry, not from users.
  */
-export const parseFailures = pgTable(
+export const parseFailures = junkclaw.table(
   "parse_failures",
   {
     id: text("id").primaryKey(),

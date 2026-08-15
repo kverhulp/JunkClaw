@@ -1,1 +1,0 @@
-ALTER TABLE "listings" ADD COLUMN "photo_urls" jsonb DEFAULT '[]'::jsonb NOT NULL;

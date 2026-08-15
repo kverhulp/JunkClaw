@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1786732736626,
-      "tag": "0000_fluffy_the_hood",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1786739378460,
-      "tag": "0001_burly_ulik",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1786784982392,
-      "tag": "0002_natural_purple_man",
+      "when": 1786785644626,
+      "tag": "0000_aromatic_selene",
       "breakpoints": true
     }
   ]

@@ -132,7 +132,7 @@ describe("searchListings", () => {
     await upsertListing(db, listing({ id: "canonical" }));
     await upsertListing(db, listing({ id: "duplicate" }));
     await db.execute(
-      `update listings set canonical_listing_id = 'x' where external_id = 'duplicate'`,
+      `update junkclaw.listings set canonical_listing_id = 'x' where external_id = 'duplicate'`,
     );
 
     const rows = await searchListings(db, query);

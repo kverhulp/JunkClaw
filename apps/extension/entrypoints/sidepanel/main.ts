@@ -10,7 +10,9 @@ import type { DealsResponse, RuntimeMessage } from "@/lib/protocol";
 import type { DealRecord } from "@/lib/deals";
 import { compPosition } from "@junkclaw/core";
 import { buildShortlist, type ShortlistEntry } from "@/lib/shortlist";
-import { compSummary, confidenceLabel, dealHeadline, describeFailure } from "@/lib/copy";
+import { compSummary, confidenceLabel, dealHeadline, describeFailure, researchHeadline } from "@/lib/copy";
+import { postResearch } from "@/lib/api";
+import type { VehicleResearch } from "@junkclaw/schema";
 import { sortShortlist, type SortKey } from "@/lib/sort";
 import { toCriteria, toForm, type CriteriaFormValues } from "@/lib/criteria-form";
 import { apiBaseUrl, apiToken, criteria, readCriteria } from "@/lib/settings";
@@ -42,6 +44,8 @@ let analyses = new Map<string, DealRecord["analysis"]>();
 /** Which rows the user opened. Survives a re-render, which happens on every
     new sighting — collapsing a row someone just opened is maddening. */
 const expanded = new Set<string>();
+/** Research already fetched this session, keyed by normalised model-year. */
+const researched = new Map<string, VehicleResearch>();
 
 /* ---------- settings sheet ----------
    Over the panel, never a separate page. Opening criteria used to call
@@ -376,6 +380,15 @@ function card(entry: ShortlistEntry): HTMLElement {
     if (isOpen) body.append(detail);
   }
 
+  /*
+   * Research is behind a button, not automatic. A cache hit is free but a miss
+   * spends a grounded model call, and browsing throws off new model-years far
+   * faster than anyone wants to pay for.
+   */
+  if (entry.vehicle !== null) {
+    body.append(researchBlock(entry.vehicle));
+  }
+
   const open = document.createElement("a");
   open.className = "open";
   // We store externalId, not the URL — the permalink is deterministic from it,
@@ -486,6 +499,97 @@ function detailFor(externalId: string, analysis: NonNullable<DealRecord["analysi
 /** The listing's own asking price, for positioning it against the comp band. */
 function analysesPrice(externalId: string): number {
   return entries.find((e) => e.facts.externalId === externalId)?.facts.priceCents ?? 0;
+}
+
+/** `2013 honda civic` — the same key the cache is keyed on. */
+function vehicleKeyOf(vehicle: { year: number; make: string; model: string }): string {
+  return `${vehicle.year} ${vehicle.make} ${vehicle.model}`.toLowerCase();
+}
+
+function researchBlock(vehicle: { year: number; make: string; model: string }): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "research";
+  const key = vehicleKeyOf(vehicle);
+  const existing = researched.get(key);
+
+  if (existing) {
+    wrap.append(renderResearch(existing));
+    return wrap;
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "btn-quiet research-btn";
+  button.textContent = `Research the ${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+  button.addEventListener("click", () => {
+    void runResearch(vehicle, button, wrap);
+  });
+  wrap.append(button);
+  return wrap;
+}
+
+async function runResearch(
+  vehicle: { year: number; make: string; model: string },
+  button: HTMLButtonElement,
+  wrap: HTMLElement,
+): Promise<void> {
+  button.disabled = true;
+  button.textContent = "Researching…";
+
+  try {
+    const [baseUrl, token] = await Promise.all([apiBaseUrl.getValue(), apiToken.getValue()]);
+    const result = await postResearch({ baseUrl, token }, vehicle);
+    researched.set(vehicleKeyOf(vehicle), result);
+    wrap.replaceChildren(renderResearch(result));
+  } catch (error) {
+    // Said out loud rather than swallowed: the usual causes are no token and a
+    // server that is not running, and both look identical from a blank panel.
+    button.disabled = false;
+    button.textContent = "Research failed — try again";
+    const why = document.createElement("p");
+    why.className = "hint";
+    why.textContent = error instanceof Error ? error.message : String(error);
+    wrap.append(why);
+  }
+}
+
+/**
+ * Rendered as its own claim, under its own heading, with its sources.
+ *
+ * Never merged into the delta above: that one measures this listing against
+ * local asking prices, this one describes the model-year from the open web.
+ * Different evidence, different confidence, shown separately.
+ */
+function renderResearch(result: VehicleResearch): HTMLElement {
+  const el = document.createElement("div");
+
+  const heading = document.createElement("p");
+  heading.className = "detail-label";
+  heading.textContent = result.fromCache ? "Researched earlier" : "Researched";
+  el.append(heading);
+
+  const headline = researchHeadline(result);
+  const line = document.createElement("span");
+  line.className = `delta ${headline.tone}`;
+  line.textContent = headline.text;
+  el.append(line);
+
+  if (result.research) {
+    const prose = document.createElement("p");
+    prose.className = "research-text";
+    prose.textContent = result.research;
+    el.append(prose);
+  }
+
+  const sources = document.createElement("p");
+  sources.className = "hint";
+  sources.textContent =
+    result.sources.length > 0
+      ? `${result.sources.length} web ${result.sources.length === 1 ? "source" : "sources"}`
+      : "No sources — not stored";
+  el.append(sources);
+
+  return el;
 }
 
 function tag(label: string, kind: string): HTMLElement {

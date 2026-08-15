@@ -8,15 +8,13 @@ export default defineConfig({
     // Narrow on purpose. An extension that reads facebook.com and transmits
     // off-device gets scrutiny in Chrome Web Store review, and every permission
     // we can't justify in one sentence is a review risk we don't need.
-    // "tabs" is needed to push scores back to the Marketplace tab after ingest
-    // resolves server-side ids. Narrow on purpose: host_permissions still limit
-    // us to facebook.com, so this grants no reach beyond the pages we already
-    // run on.
+    // "tabs" is gone along with the inline badge: nothing is pushed into the
+    // Marketplace tab any more, so nothing needs to go looking for it.
     // "sidePanel" is the extension's UI surface: the deal shortlist opens
     // beside the page instead of over it, which is what makes it usable while
     // you're still scrolling. It grants no access to page content — the reach
     // is still bounded by host_permissions below.
-    permissions: ["storage", "tabs", "sidePanel"],
+    permissions: ["storage", "sidePanel"],
     side_panel: { default_path: "sidepanel.html" },
     // An empty action, deliberately. MV3 renders no toolbar button without an
     // `action` key, and a button with no popup is what lets

@@ -1,5 +1,5 @@
 import type { FitFailure } from "@junkclaw/core";
-import type { Analysis, CompConfidence, CompSet } from "@junkclaw/schema";
+import type { Analysis, CompConfidence, CompSet, VehicleResearch } from "@junkclaw/schema";
 
 /**
  * The words the panel puts on screen.
@@ -93,6 +93,31 @@ export function compSummary(comps: CompSet): string | null {
   const n = comps.listingIds.length;
   const noun = n === 1 ? "comparable listing" : "comparable listings";
   return `vs. ${n} ${noun} · median asking ${dollars(comps.medianPriceCents)}`;
+}
+
+/**
+ * The researched figure, labelled as what it is.
+ *
+ * Never phrased like the comp median. "Researched" and "typical asking price"
+ * name a claim about the model-year from the open web; the delta above names a
+ * claim about this listing against local asks. The panel shows both, and
+ * merging them into one number is the mistake this product cannot make.
+ */
+export function researchHeadline(research: VehicleResearch): Headline {
+  // Ungrounded is fluent, confident and unverifiable — the worst of the three
+  // outcomes, and the only one presented as a failure.
+  if (!research.grounded) {
+    return { tone: "unknown", text: "Couldn't verify this against the web" };
+  }
+
+  if (research.avgPriceCents === null) {
+    return { tone: "level", text: "Researched: no Canadian pricing found" };
+  }
+
+  return {
+    tone: "level",
+    text: `Researched: ${dollars(research.avgPriceCents)} typical asking price`,
+  };
 }
 
 /** Never "Insufficient": the wording for that state is fixed product-wide. */

@@ -1,10 +1,12 @@
 import {
   IngestResponseSchema,
   ScoreResponseSchema,
+  VehicleResearchSchema,
   type IngestRequest,
   type IngestResponse,
   type ScoreRequest,
   type ScoreResponse,
+  type VehicleResearch,
 } from "@junkclaw/schema";
 
 /**
@@ -42,6 +44,17 @@ export async function postScore(
   body: ScoreRequest,
 ): Promise<ScoreResponse> {
   return request(config, "/api/score", body, ScoreResponseSchema);
+}
+
+/**
+ * Researches one model-year. User-initiated: a cache hit is free but a miss
+ * spends a grounded model call, so this is never fired for a whole grid.
+ */
+export async function postResearch(
+  config: ApiConfig,
+  body: { year: number; make: string; model: string },
+): Promise<VehicleResearch> {
+  return request(config, "/api/research", body, VehicleResearchSchema);
 }
 
 async function request<T>(

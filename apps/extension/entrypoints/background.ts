@@ -1,9 +1,8 @@
-import type { ListingFacts } from "@junkclaw/schema";
+import type { Analysis, ListingFacts } from "@junkclaw/schema";
 import type {
   DealsResponse,
   DealsUpdatedMessage,
   RuntimeMessage,
-  ScoresMessage,
   StatusResponse,
 } from "@/lib/protocol";
 import { SessionDeals } from "@/lib/deals";
@@ -63,7 +62,7 @@ const queue = new IngestQueue({
       // corpus must grow) even when scoring is unavailable. A failure here is
       // logged by omission — the badges simply stay at "…" — rather than sending
       // the whole batch back to the queue for a re-ingest it doesn't need.
-      await scoreAndBroadcast({ baseUrl, token }, batch, ingested.listingIds);
+      await scoreAndFile({ baseUrl, token }, batch, ingested.listingIds);
     } catch (error) {
       // The queue records the reason and retries; the panel has no other way to
       // learn about it. Without this, a missing token or a dead API reads as
@@ -76,10 +75,10 @@ const queue = new IngestQueue({
 });
 
 /**
- * Turns server-side listing ids back into the externalIds the DOM cards carry,
- * then pushes the analyses to whichever tabs are showing Marketplace.
+ * Turns server-side listing ids back into the externalIds the panel keys on,
+ * then files the analyses in the session store it reads from.
  */
-async function scoreAndBroadcast(
+async function scoreAndFile(
   config: { baseUrl: string; token: string },
   batch: ListingFacts[],
   listingIds: Record<string, string>,
@@ -101,12 +100,13 @@ async function scoreAndBroadcast(
         const externalId = externalIdByListingId.get(analysis.listingId);
         return externalId ? { ...analysis, externalId } : null;
       })
-      .filter((a): a is ScoresMessage["analyses"][number] => a !== null);
+      .filter((a): a is Analysis & { externalId: string } => a !== null);
 
     if (analyses.length > 0) {
+      // Straight into the session store the panel reads. Nothing is pushed
+      // into the Marketplace tab any more — there is no badge to update.
       deals.score(analyses);
       notifyPanel();
-      await broadcast({ kind: "scores", analyses });
     }
   } catch {
     // Badges stay at "…" and refresh on the next burst. Not worth surfacing.
@@ -135,19 +135,6 @@ function currentStatus(enabled: boolean): StatusResponse {
     lastIngestAt: stats.lastIngestAt,
     lastError: queue.lastError,
   };
-}
-
-async function broadcast(message: ScoresMessage): Promise<void> {
-  const tabs = await browser.tabs.query({ url: "https://www.facebook.com/marketplace/*" });
-  await Promise.all(
-    tabs.map((tab) =>
-      tab.id === undefined
-        ? Promise.resolve()
-        : browser.tabs.sendMessage(tab.id, message).catch(() => {
-            // Tab navigated away mid-flight. Nothing to do.
-          }),
-    ),
-  );
 }
 
 export default defineBackground(() => {

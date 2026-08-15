@@ -74,3 +74,27 @@ export const ScoreResponseSchema = z.strictObject({
   pending: z.array(z.string()),
 });
 export type ScoreResponse = z.infer<typeof ScoreResponseSchema>;
+
+/**
+ * Researched market context for a model-year — the external anchor for listings
+ * our own corpus is too thin to comp.
+ *
+ * Kept apart from `Analysis` on purpose. Analysis is what *this* listing is
+ * doing against *local asking prices*; this is what the model-year is worth
+ * generally, from the open web. They are different claims with different
+ * evidence, and the UI must never merge them into one number.
+ */
+export const VehicleResearchSchema = z.strictObject({
+  year: z.number().int(),
+  make: z.string(),
+  model: z.string(),
+  /** Null when the research found no Canadian pricing. A real answer. */
+  avgPriceCents: z.number().int().nullable(),
+  research: z.string().nullable(),
+  /** Empty means it was never verified, and the UI must say so. */
+  sources: z.array(z.string()),
+  fromCache: z.boolean(),
+  grounded: z.boolean(),
+  stored: z.boolean(),
+});
+export type VehicleResearch = z.infer<typeof VehicleResearchSchema>;

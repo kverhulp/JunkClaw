@@ -1,4 +1,4 @@
-import type { Analysis, ListingFacts } from "@junkclaw/schema";
+import type { ListingFacts } from "@junkclaw/schema";
 import type { DealRecord } from "./deals";
 
 /**
@@ -44,18 +44,6 @@ export type RuntimeMessage =
   | { kind: "parse-failure"; stage: string; message: string; payload: unknown }
   | { kind: "get-status" }
   | { kind: "get-deals" };
-
-/**
- * background -> isolated world.
- *
- * Scores arrive after ingest has resolved server-side ids, so the badge for a
- * newly-seen listing fills in on a later tick rather than on first paint. Keyed
- * by externalId because that is what the DOM card carries.
- */
-export interface ScoresMessage {
-  kind: "scores";
-  analyses: Array<Analysis & { externalId: string }>;
-}
 
 export interface StatusResponse {
   enabled: boolean;

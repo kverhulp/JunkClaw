@@ -804,3 +804,33 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ---------- researched context ----------
+   Its own block under its own heading, never merged into the delta above: that
+   one measures this listing against local asking prices, this one describes the
+   model-year from the open web. Different evidence, shown separately. */
+
+.research {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px solid var(--color-divider);
+}
+
+.research-btn {
+  width: 100%;
+  font-size: 12px;
+  padding: 7px 10px;
+}
+
+.research-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.research-text {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+}

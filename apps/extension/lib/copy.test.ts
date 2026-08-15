@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Analysis } from "@junkclaw/schema";
-import { compSummary, confidenceLabel, dealHeadline, describeFailure } from "./copy";
+import { compSummary, confidenceLabel, dealHeadline, describeFailure, researchHeadline } from "./copy";
 
 function analysis(overrides: Partial<Analysis> = {}): Analysis {
   return {
@@ -150,5 +150,43 @@ describe("confidenceLabel", () => {
   // Never "Insufficient" — the user-facing wording for this state is fixed.
   it("renders an insufficient set as 'Not enough data'", () => {
     expect(confidenceLabel("insufficient")).toBe("Not enough data");
+  });
+});
+
+describe("researchHeadline", () => {
+  const base = {
+    year: 2013,
+    make: "honda",
+    model: "civic",
+    avgPriceCents: 1_075_000,
+    research: "Typically $9,500 to $12,000 CAD.",
+    sources: ["https://a.test", "https://b.test"],
+    fromCache: false,
+    grounded: true,
+    stored: true,
+  };
+
+  /*
+   * It must never read like our corpus number. "Researched" and "typical
+   * asking" name a different claim with different evidence, and the panel
+   * shows the two side by side.
+   */
+  it("labels the figure as researched, not as our own comp median", () => {
+    expect(researchHeadline(base).text).toBe("Researched: $10,750 typical asking price");
+  });
+
+  it("says plainly when the research found no price", () => {
+    expect(researchHeadline({ ...base, avgPriceCents: null }).text).toBe(
+      "Researched: no Canadian pricing found",
+    );
+  });
+
+  // An unsourced answer is the dangerous one: fluent, confident, unverifiable.
+  it("refuses to present an ungrounded answer as research", () => {
+    const ungrounded = { ...base, grounded: false, sources: [] };
+    expect(researchHeadline(ungrounded)).toEqual({
+      tone: "unknown",
+      text: "Couldn't verify this against the web",
+    });
   });
 });

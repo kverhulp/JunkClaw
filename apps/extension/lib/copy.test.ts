@@ -98,6 +98,26 @@ describe("describeFailure", () => {
       "Over 200,000 km",
     );
   });
+
+  it("names the transmission asked for, not the one found", () => {
+    expect(
+      describeFailure({ kind: "transmission", wanted: ["automatic"], actual: "manual" }),
+    ).toBe("Not automatic");
+  });
+
+  it("lists every drivetrain asked for, upper-cased the way people write them", () => {
+    expect(
+      describeFailure({ kind: "drivetrain", wanted: ["awd", "4wd"], actual: "fwd" }),
+    ).toBe("Not AWD or 4WD");
+  });
+
+  it("names the fuel asked for", () => {
+    expect(describeFailure({ kind: "fuel", wanted: ["diesel"], actual: "gas" })).toBe("Not diesel");
+  });
+
+  it("quotes the exclusion that matched, so it's obvious which rule fired", () => {
+    expect(describeFailure({ kind: "excluded", term: "salvage" })).toBe("Excluded: salvage");
+  });
 });
 
 describe("compSummary", () => {

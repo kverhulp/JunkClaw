@@ -1,4 +1,11 @@
-import type { CompSet, EnrichedListing, SavedCriteria } from "@junkclaw/schema";
+import type {
+  CompSet,
+  Drivetrain,
+  EnrichedListing,
+  Fuel,
+  SavedCriteria,
+  Transmission,
+} from "@junkclaw/schema";
 
 /**
  * Two scores, shown together and never averaged.
@@ -115,7 +122,11 @@ export type FitFailure =
   | { kind: "under_budget"; limitCents: number; actualCents: number }
   | { kind: "too_old"; limitYear: number; actualYear: number }
   | { kind: "too_new"; limitYear: number; actualYear: number }
-  | { kind: "over_mileage"; limitKm: number; actualKm: number };
+  | { kind: "over_mileage"; limitKm: number; actualKm: number }
+  | { kind: "transmission"; wanted: Transmission[]; actual: Transmission }
+  | { kind: "drivetrain"; wanted: Drivetrain[]; actual: Drivetrain }
+  | { kind: "fuel"; wanted: Fuel[]; actual: Fuel }
+  | { kind: "excluded"; term: string };
 
 export interface FitVerdict {
   qualifies: boolean;
@@ -167,6 +178,54 @@ export function fitVerdict(listing: EnrichedListing, criteria: SavedCriteria): F
       limitKm: criteria.maxMileageKm,
       actualKm: vehicle.mileageKm,
     });
+  }
+
+  /*
+   * Spec matching. An empty list means the user didn't ask, so nothing is
+   * judged — and "unknown" always passes, because most grid titles carry no
+   * transmission or fuel and the extractor says so honestly. Failing those
+   * would empty the shortlist the moment anyone ticks a box.
+   */
+  if (
+    criteria.transmission.length > 0 &&
+    vehicle.transmission !== "unknown" &&
+    !criteria.transmission.includes(vehicle.transmission)
+  ) {
+    failures.push({
+      kind: "transmission",
+      wanted: criteria.transmission,
+      actual: vehicle.transmission,
+    });
+  }
+  if (
+    criteria.drivetrain.length > 0 &&
+    vehicle.drivetrain !== "unknown" &&
+    !criteria.drivetrain.includes(vehicle.drivetrain)
+  ) {
+    failures.push({ kind: "drivetrain", wanted: criteria.drivetrain, actual: vehicle.drivetrain });
+  }
+  if (
+    criteria.fuel.length > 0 &&
+    vehicle.fuel !== "unknown" &&
+    !criteria.fuel.includes(vehicle.fuel)
+  ) {
+    failures.push({ kind: "fuel", wanted: criteria.fuel, actual: vehicle.fuel });
+  }
+
+  /*
+   * Free-text exclusions, matched against the listing's own title.
+   *
+   * The description is the better place to look and is empty on grid payloads,
+   * so the title is what we have — which still catches the terms that matter
+   * most here ("salvage", "parts only"). A blank term is skipped rather than
+   * matching every title.
+   */
+  const haystack = listing.rawTitle.toLowerCase();
+  for (const raw of criteria.excludes) {
+    const term = raw.trim().toLowerCase();
+    if (term.length > 0 && haystack.includes(term)) {
+      failures.push({ kind: "excluded", term: raw.trim() });
+    }
   }
 
   return { qualifies: failures.length === 0, failures };

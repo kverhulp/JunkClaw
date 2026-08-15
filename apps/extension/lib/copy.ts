@@ -61,7 +61,22 @@ export function describeFailure(failure: FitFailure): string {
       return `Newer than ${failure.limitYear}`;
     case "over_mileage":
       return `Over ${failure.limitKm.toLocaleString("en-CA")} km`;
+    case "transmission":
+      return `Not ${orList(failure.wanted)}`;
+    case "drivetrain":
+      // fwd/awd/4wd are initialisms everywhere except our enum.
+      return `Not ${orList(failure.wanted.map((d) => d.toUpperCase()))}`;
+    case "fuel":
+      return `Not ${orList(failure.wanted)}`;
+    case "excluded":
+      return `Excluded: ${failure.term}`;
   }
+}
+
+/** "automatic" · "AWD or 4WD" · "gas, diesel or hybrid" */
+function orList(values: readonly string[]): string {
+  if (values.length <= 1) return values[0] ?? "";
+  return `${values.slice(0, -1).join(", ")} or ${values[values.length - 1]}`;
 }
 
 /**

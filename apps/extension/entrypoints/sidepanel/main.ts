@@ -12,7 +12,8 @@ import { compPosition } from "@junkclaw/core";
 import { buildShortlist, type ShortlistEntry } from "@/lib/shortlist";
 import { compSummary, confidenceLabel, dealHeadline, describeFailure } from "@/lib/copy";
 import { sortShortlist, type SortKey } from "@/lib/sort";
-import { apiToken, criteria, readCriteria } from "@/lib/settings";
+import { toCriteria, toForm, type CriteriaFormValues } from "@/lib/criteria-form";
+import { apiBaseUrl, apiToken, criteria, readCriteria } from "@/lib/settings";
 
 /**
  * The side panel: the shortlist of cars on the page that match what you asked for.
@@ -42,8 +43,143 @@ let analyses = new Map<string, DealRecord["analysis"]>();
     new sighting — collapsing a row someone just opened is maddening. */
 const expanded = new Set<string>();
 
+/* ---------- settings sheet ----------
+   Over the panel, never a separate page. Opening criteria used to call
+   openOptionsPage(), which pulls focus off the Marketplace tab you are in the
+   middle of shopping — the one thing a side panel exists to avoid. */
+
+const sheet = document.querySelector<HTMLElement>("#sheet")!;
+const savedFlag = document.querySelector<HTMLElement>("#sheet-saved")!;
+
+function showSheet(open: boolean): void {
+  sheet.hidden = !open;
+  document.querySelector<HTMLButtonElement>("#settings")!.setAttribute(
+    "aria-expanded",
+    String(open),
+  );
+  if (open) void loadSheet();
+}
+
 document.querySelector<HTMLButtonElement>("#settings")!.addEventListener("click", () => {
-  void browser.runtime.openOptionsPage();
+  // `hidden` is `boolean | "until-found"`, so coerce rather than pass it through.
+  showSheet(Boolean(sheet.hidden));
+});
+document.querySelector<HTMLButtonElement>("#sheet-back")!.addEventListener("click", () => {
+  showSheet(false);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !sheet.hidden) showSheet(false);
+});
+
+// Multi-select groups. aria-pressed is the state, so the DOM stays the single
+// source of truth and there is no parallel array to fall out of sync.
+for (const group of document.querySelectorAll<HTMLElement>(".opts[data-group]")) {
+  for (const opt of group.querySelectorAll<HTMLButtonElement>(".opt")) {
+    opt.addEventListener("click", () => {
+      opt.setAttribute("aria-pressed", opt.getAttribute("aria-pressed") === "true" ? "false" : "true");
+    });
+  }
+}
+
+const excludeList = document.querySelector<HTMLElement>("#excludes")!;
+const excludeInput = document.querySelector<HTMLInputElement>("#exclude-input")!;
+
+document.querySelector<HTMLFormElement>("#exclude-add")!.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const term = excludeInput.value.trim();
+  if (term.length === 0) return;
+  addExclude(term);
+  excludeInput.value = "";
+});
+
+function addExclude(term: string): void {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "opt exclude";
+  chip.dataset.value = term;
+  chip.title = `Remove "${term}"`;
+  chip.textContent = `${term} \u00d7`;
+  chip.addEventListener("click", () => chip.remove());
+  excludeList.append(chip);
+}
+
+function selected(group: string): string[] {
+  return [
+    ...document.querySelectorAll<HTMLButtonElement>(
+      `.opts[data-group="${group}"] .opt[aria-pressed="true"]`,
+    ),
+  ].map((o) => o.dataset.value!);
+}
+
+function setSelected(group: string, values: readonly string[]): void {
+  for (const opt of document.querySelectorAll<HTMLButtonElement>(
+    `.opts[data-group="${group}"] .opt`,
+  )) {
+    opt.setAttribute("aria-pressed", String(values.includes(opt.dataset.value!)));
+  }
+}
+
+function input(id: string): HTMLInputElement {
+  return document.querySelector<HTMLInputElement>(`#${id}`)!;
+}
+
+async function loadSheet(): Promise<void> {
+  const [current, base, token] = await Promise.all([
+    readCriteria(),
+    apiBaseUrl.getValue(),
+    apiToken.getValue(),
+  ]);
+  const values = toForm(current);
+
+  input("budgetMin").value = values.budgetMin;
+  input("budgetMax").value = values.budgetMax;
+  input("maxMileage").value = values.maxMileage;
+  input("yearMin").value = values.yearMin;
+  input("yearMax").value = values.yearMax;
+  input("radiusKm").value = values.radiusKm;
+  input("originCity").value = values.originCity;
+  setSelected("transmission", values.transmission);
+  setSelected("drivetrain", values.drivetrain);
+  setSelected("fuel", values.fuel);
+
+  excludeList.replaceChildren();
+  for (const term of values.excludes) addExclude(term);
+
+  input("apiBaseUrl").value = base;
+  input("apiToken").value = token;
+  savedFlag.hidden = true;
+}
+
+document.querySelector<HTMLButtonElement>("#sheet-save")!.addEventListener("click", () => {
+  void (async () => {
+    const values: CriteriaFormValues = {
+      budgetMin: input("budgetMin").value,
+      budgetMax: input("budgetMax").value,
+      maxMileage: input("maxMileage").value,
+      yearMin: input("yearMin").value,
+      yearMax: input("yearMax").value,
+      radiusKm: input("radiusKm").value,
+      originCity: input("originCity").value,
+      transmission: selected("transmission") as CriteriaFormValues["transmission"],
+      drivetrain: selected("drivetrain") as CriteriaFormValues["drivetrain"],
+      fuel: selected("fuel") as CriteriaFormValues["fuel"],
+      excludes: [...excludeList.querySelectorAll<HTMLElement>(".exclude")].map(
+        (c) => c.dataset.value!,
+      ),
+      muteNonQualifying: false,
+    };
+
+    await Promise.all([
+      criteria.setValue(toCriteria(values)),
+      apiBaseUrl.setValue(input("apiBaseUrl").value.trim()),
+      apiToken.setValue(input("apiToken").value.trim()),
+    ]);
+
+    savedFlag.hidden = false;
+    // The stored-criteria watcher re-judges the list; this only re-reads the
+    // connection line in the header.
+    void refresh();
+  })();
 });
 
 const sortSelect = document.querySelector<HTMLSelectElement>("#sort")!;

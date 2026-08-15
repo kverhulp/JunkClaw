@@ -55,6 +55,8 @@
 body {
   margin: 0;
   height: 100vh;
+  /* Containing block for the settings sheet's inset:0. */
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--color-bg);
@@ -568,6 +570,217 @@ body {
   font-size: 13px;
   color: var(--color-accent-700);
   text-underline-offset: 2px;
+}
+
+/* ---------- settings sheet ----------
+   Sits over the list inside the panel. The Marketplace tab underneath is never
+   touched, which is the whole reason the panel exists. */
+
+.sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+.sheet[hidden] {
+  display: none;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 2px solid var(--color-divider);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  /* minmax(0,1fr), not 1fr: grid children default to min-width:auto and a
+     two-up input row would otherwise push past the panel. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-content: start;
+}
+
+.sheet-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.field-label {
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 2px solid var(--color-divider);
+  background: var(--color-neutral-100);
+}
+
+.input:focus-within {
+  border-color: var(--color-text);
+}
+
+.input span {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.input input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: 400 14px/1.4 var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.input input:focus {
+  outline: none;
+}
+
+.opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.opt {
+  padding: 4px 10px;
+  border: 2px solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: 400 12px/1.4 var(--font-sans);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.opt:hover {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.opt[aria-pressed="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #ffffff;
+}
+
+/* Exclusions are removed by clicking them, so they read as struck-through
+   chips rather than as toggles. */
+.opt.exclude {
+  border-color: var(--color-divider);
+  color: var(--color-text);
+}
+
+.exclude-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.btn-quiet {
+  padding: 8px 14px;
+  border: 2px solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text);
+  font: 400 13px/1.2 var(--font-sans);
+  cursor: pointer;
+}
+
+.btn-quiet:hover {
+  border-color: var(--color-text);
+}
+
+.rule {
+  height: 2px;
+  margin: 0;
+  border: 0;
+  background: var(--color-divider);
+}
+
+.sheet-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 2px solid var(--color-divider);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.btn {
+  padding: 9px 22px;
+  border: 2px solid var(--color-accent);
+  background: var(--color-accent);
+  color: #ffffff;
+  font: 600 14px/1.2 var(--font-sans);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.btn:hover {
+  background: var(--color-accent-600);
+  border-color: var(--color-accent-600);
+}
+
+.saved {
+  font-size: 12px;
+  color: var(--color-accent-700);
 }
 
 .foot {

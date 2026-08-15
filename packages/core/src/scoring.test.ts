@@ -209,6 +209,76 @@ describe("fitVerdict", () => {
     expect(fitVerdict(listing({ mileageKm: null }), criteria).qualifies).toBe(true);
   });
 
+  describe("transmission, drivetrain and fuel", () => {
+    it("passes a listing whose transmission is one the user asked for", () => {
+      const wanted: SavedCriteria = { ...criteria, transmission: ["automatic"] };
+      expect(fitVerdict(listing({ transmission: "automatic" }), wanted).qualifies).toBe(true);
+    });
+
+    it("fails a listing whose transmission is not one the user asked for", () => {
+      const wanted: SavedCriteria = { ...criteria, transmission: ["automatic"] };
+      expect(fitVerdict(listing({ transmission: "manual" }), wanted).failures).toEqual([
+        { kind: "transmission", wanted: ["automatic"], actual: "manual" },
+      ]);
+    });
+
+    /*
+     * Most grid titles carry no transmission, so the extractor returns
+     * "unknown" for the majority of listings. Failing those would empty the
+     * shortlist the moment anyone ticks a box — the same reasoning that keeps
+     * unknown mileage from failing.
+     */
+    it("does not fail a listing whose transmission is simply unknown", () => {
+      const wanted: SavedCriteria = { ...criteria, transmission: ["automatic"] };
+      expect(fitVerdict(listing({ transmission: "unknown" }), wanted).qualifies).toBe(true);
+    });
+
+    it("judges nothing when the user ticked no transmission at all", () => {
+      expect(fitVerdict(listing({ transmission: "manual" }), criteria).qualifies).toBe(true);
+    });
+
+    it("fails a drivetrain the user didn't ask for", () => {
+      const wanted: SavedCriteria = { ...criteria, drivetrain: ["awd", "4wd"] };
+      expect(fitVerdict(listing({ drivetrain: "fwd" }), wanted).failures).toEqual([
+        { kind: "drivetrain", wanted: ["awd", "4wd"], actual: "fwd" },
+      ]);
+    });
+
+    it("fails a fuel type the user didn't ask for", () => {
+      const wanted: SavedCriteria = { ...criteria, fuel: ["diesel"] };
+      expect(fitVerdict(listing({ fuel: "gas" }), wanted).failures).toEqual([
+        { kind: "fuel", wanted: ["diesel"], actual: "gas" },
+      ]);
+    });
+  });
+
+  describe("excludes", () => {
+    it("fails a listing whose title contains an excluded term", () => {
+      const withExcludes: SavedCriteria = { ...criteria, excludes: ["salvage"] };
+      const salvage = { ...listing(), rawTitle: "2018 Toyota Corolla salvage title" };
+      expect(fitVerdict(salvage, withExcludes).failures).toEqual([
+        { kind: "excluded", term: "salvage" },
+      ]);
+    });
+
+    it("matches an excluded term regardless of case", () => {
+      const withExcludes: SavedCriteria = { ...criteria, excludes: ["Parts Only"] };
+      const parts = { ...listing(), rawTitle: "2018 Toyota Corolla PARTS ONLY" };
+      expect(fitVerdict(parts, withExcludes).qualifies).toBe(false);
+    });
+
+    it("leaves a listing alone when no excluded term appears", () => {
+      const withExcludes: SavedCriteria = { ...criteria, excludes: ["salvage", "parts only"] };
+      expect(fitVerdict(listing(), withExcludes).qualifies).toBe(true);
+    });
+
+    // A blank row in the excludes list would otherwise match every title.
+    it("ignores an empty exclude term rather than excluding everything", () => {
+      const withBlank: SavedCriteria = { ...criteria, excludes: ["", "   "] };
+      expect(fitVerdict(listing(), withBlank).qualifies).toBe(true);
+    });
+  });
+
   it("agrees with qualifies on every case", () => {
     const subjects = [
       listing(),

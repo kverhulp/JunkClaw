@@ -29,9 +29,8 @@ export default function DashboardPage() {
 
   return (
     <AppShell
-      title="Overview"
+      title="Dashboard"
       description="Saved searches, price movement, and what you looked at recently."
-      actions={<Button variant="primary" size="sm">New saved search</Button>}
     >
       <ShortlistSection />
 

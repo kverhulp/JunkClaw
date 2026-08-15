@@ -8,6 +8,7 @@ import { motion } from "motion/react";
 
 import { Badge, Button, cx } from "../ui/primitives";
 import { BrandMark } from "./brand";
+import { useSession } from "../../lib/session";
 import { LegalDialogs, type LegalDoc } from "../legal/legal-dialogs";
 
 const NAV = [
@@ -17,11 +18,9 @@ const NAV = [
   { href: "/settings", label: "Settings" },
 ];
 
-/** Placeholder for real session state; better-auth lands in apps/web/lib/auth.ts. */
-const SIGNED_IN = false;
-
 export function SiteHeader() {
   const pathname = usePathname();
+  const { user, ready, signOut } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -68,19 +67,30 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-2 md:flex">
-          {SIGNED_IN ? (
-            <Button size="sm" variant="secondary">
-              Account
-            </Button>
+        <div className="hidden shrink-0 items-center gap-3 md:flex">
+          {/* Renders nothing until the session is read, rather than flashing
+              "Sign in" at someone who is already signed in. */}
+          {!ready ? null : user ? (
+            <>
+              <span className="text-[14px] text-text-secondary">{user.name}</span>
+              <Button size="sm" variant="secondary" onClick={signOut}>
+                Sign out
+              </Button>
+            </>
           ) : (
             <>
-              <Button size="sm" variant="ghost">
+              <Link
+                href="/sign-in"
+                className="px-1 text-[14px] font-extrabold text-accent-700 hover:underline"
+              >
                 Sign in
-              </Button>
-              <Button size="sm" variant="primary">
+              </Link>
+              <Link
+                href="/sign-up"
+                className="inline-flex min-h-8 items-center border border-transparent bg-accent px-3 text-[14px] font-extrabold text-bg transition-colors duration-150 ease-out hover:bg-accent-600"
+              >
                 Get started
-              </Button>
+              </Link>
             </>
           )}
         </div>
@@ -111,12 +121,36 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="mt-2 flex gap-2 border-t border-divider p-2 pt-3">
-              <Button size="sm" variant="secondary" className="flex-1">
-                Sign in
-              </Button>
-              <Button size="sm" variant="primary" className="flex-1">
-                Get started
-              </Button>
+              {user ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => {
+                    signOut();
+                    setMobileOpen(false);
+                  }}
+                >
+                  Sign out
+                </Button>
+              ) : (
+                <>
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex min-h-8 flex-1 items-center justify-center border border-divider px-3 text-[14px] font-extrabold"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex min-h-8 flex-1 items-center justify-center border border-transparent bg-accent px-3 text-[14px] font-extrabold text-bg"
+                  >
+                    Get started
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>

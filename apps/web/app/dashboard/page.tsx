@@ -32,6 +32,10 @@ export default function DashboardPage() {
       title="Dashboard"
       description="Saved searches, price movement, and what you looked at recently."
     >
+      {/* gap-10 rather than the gap-6 used between sections inside the loaded
+          block: the shortlist is its own thing, and the same spacing on both
+          sides would read as one long list. */}
+      <div className="flex flex-col gap-10">
       <ShortlistSection />
 
       <Crossfade state={isLoading ? "loading" : isError ? "error" : isEmpty ? "empty" : "ready"}>
@@ -158,6 +162,7 @@ export default function DashboardPage() {
         </div>
       )}
       </Crossfade>
+      </div>
 
       <CarSuperDataDrawer listing={selected} onClose={() => setSelected(null)} />
     </AppShell>

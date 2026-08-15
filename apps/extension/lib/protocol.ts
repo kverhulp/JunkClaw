@@ -1,5 +1,6 @@
 import type { ListingFacts } from "@junkclaw/schema";
 import type { DealRecord } from "./deals";
+import type { ListingDetail } from "./detail";
 
 /**
  * The two hops a listing makes before it leaves the browser:
@@ -43,6 +44,7 @@ export type RuntimeMessage =
   | { kind: "listings-observed"; listings: ListingFacts[] }
   | { kind: "parse-failure"; stage: string; message: string; payload: unknown }
   | { kind: "get-status" }
+  | { kind: "listing-detail-observed"; detail: ListingDetail }
   | { kind: "get-deals" };
 
 export interface StatusResponse {

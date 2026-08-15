@@ -1,3 +1,5 @@
+import { z } from "zod";
+import type { ListingDetail } from "./detail";
 import {
   IngestResponseSchema,
   ScoreResponseSchema,
@@ -56,6 +58,20 @@ export async function postResearch(
 ): Promise<VehicleResearch> {
   return request(config, "/api/research", body, VehicleResearchSchema);
 }
+
+/**
+ * Sends what a detail page added. Fire and forget from the worker's side: the
+ * listing already exists with its grid facts, and a failed enrichment leaves it
+ * exactly as it was.
+ */
+export async function postEnrich(
+  config: ApiConfig,
+  detail: ListingDetail,
+): Promise<{ enriched: boolean }> {
+  return request(config, "/api/enrich", detail, EnrichResponseSchema);
+}
+
+const EnrichResponseSchema = z.strictObject({ enriched: z.boolean() });
 
 async function request<T>(
   config: ApiConfig,

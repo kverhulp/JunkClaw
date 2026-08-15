@@ -1,5 +1,6 @@
 import { isPagePayloadMessage, type RuntimeMessage } from "@/lib/protocol";
 import { PayloadShapeError, attachUrlHashes, parseListings } from "@/lib/parse";
+import { parseListingDetail } from "@/lib/detail";
 
 /**
  * The isolated-world half of the content script.
@@ -42,6 +43,18 @@ export default defineContentScript({
       if (event.source !== window) return;
       if (event.origin !== window.location.origin) return;
       if (!isPagePayloadMessage(event.data)) return;
+
+      /*
+       * Detail pages carry the description, which grid payloads never do — and
+       * it is the only text risk-analyst can quote a flag from. They arrive on
+       * the same bridge, so try that shape first; it is cheap and a grid feed
+       * is rejected outright.
+       */
+      const detail = parseListingDetail(event.data.body);
+      if (detail !== null) {
+        send({ kind: "listing-detail-observed", detail });
+        return;
+      }
 
       try {
         const parsed = parseListings(event.data.body);

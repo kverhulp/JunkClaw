@@ -160,6 +160,15 @@ export const listings = junkclaw.table(
     /** Kept so we can re-parse history after improving the parser. */
     rawPayload: jsonb("raw_payload").notNull(),
 
+    /**
+     * What risk-analyst found in the description, each flag carrying the quote
+     * that triggered it. Written once when a detail page supplies the text
+     * rather than on every score — the description does not change, and paying
+     * a model per scoring request for a fixed answer would be absurd.
+     */
+    riskFlags: jsonb("risk_flags").notNull().default([]),
+    riskAnalysedAt: timestamp("risk_analysed_at", { withTimezone: true }),
+
     /** Set when dedup folds this into another listing (relist, cross-post). */
     canonicalListingId: text("canonical_listing_id"),
 

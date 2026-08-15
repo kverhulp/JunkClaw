@@ -7,7 +7,7 @@ import type {
 } from "@/lib/protocol";
 import { SessionDeals } from "@/lib/deals";
 import { IngestQueue } from "@/lib/queue";
-import { postIngest, postScore } from "@/lib/api";
+import { postEnrich, postIngest, postScore } from "@/lib/api";
 import { apiBaseUrl, apiToken, enabled } from "@/lib/settings";
 
 /**
@@ -157,6 +157,20 @@ export default defineBackground(() => {
           deals.observe(message.listings);
           notifyPanel();
           queue.add(message.listings);
+        })();
+        return false;
+
+      case "listing-detail-observed":
+        void (async () => {
+          if (!(await enabled.getValue())) return;
+          const [baseUrl, token] = await Promise.all([
+            apiBaseUrl.getValue(),
+            apiToken.getValue(),
+          ]);
+          if (!token) return;
+          // Best effort. A detail page we cannot enrich is a listing that keeps
+          // the facts the grid gave it, which is the state it was already in.
+          await postEnrich({ baseUrl, token }, message.detail).catch(() => {});
         })();
         return false;
 

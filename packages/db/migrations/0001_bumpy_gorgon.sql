@@ -1,0 +1,2 @@
+ALTER TABLE "junkclaw"."listings" ADD COLUMN "risk_flags" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "junkclaw"."listings" ADD COLUMN "risk_analysed_at" timestamp with time zone;

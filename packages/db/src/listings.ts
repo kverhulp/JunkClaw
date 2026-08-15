@@ -118,3 +118,110 @@ async function writeSnapshots(
     })),
   );
 }
+
+/**
+ * What a detail page adds to a listing we already have.
+ *
+ * Enrichment, never creation: detail payloads carry no city — only exact
+ * coordinates and a trimmed postal code — and coarse location has to come from
+ * the grid sighting.
+ */
+export interface ListingEnrichment {
+  source: string;
+  externalId: string;
+  /** Seller-authored copy about the vehicle. The reason this path exists. */
+  description: string;
+  isDealer: boolean;
+  mileageKm: number | null;
+  transmission: string;
+  fuel: string;
+  vin: string | null;
+}
+
+/**
+ * Fills in what only the detail page knows. Returns false when the listing was
+ * never seen in a grid, which is ordinary — a detail page can be opened
+ * directly — and not a reason to create a row with no location.
+ *
+ * Unknowns never overwrite knowns. The 116-key detail variant carries a
+ * description and omits every `vehicle_*` field, so writing its blanks over
+ * what the title already gave us would lose information to an enrichment step.
+ */
+export async function enrichListing(
+  db: Database,
+  enrichment: ListingEnrichment,
+): Promise<boolean> {
+  const updated = await db
+    .update(listings)
+    .set({
+      description: enrichment.description,
+      isDealer: enrichment.isDealer,
+      ...(enrichment.mileageKm !== null ? { mileageKm: enrichment.mileageKm } : {}),
+      ...(enrichment.transmission !== "unknown"
+        ? { transmission: enrichment.transmission }
+        : {}),
+      ...(enrichment.fuel !== "unknown" ? { fuel: enrichment.fuel } : {}),
+      ...(enrichment.vin !== null ? { vin: enrichment.vin } : {}),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(listings.source, enrichment.source), eq(listings.externalId, enrichment.externalId)),
+    )
+    .returning({ id: listings.id });
+
+  return updated.length > 0;
+}
+
+/**
+ * Stores what risk-analyst found, and stamps when.
+ *
+ * The stamp is what stops us paying for the same answer twice: a description
+ * does not change, so a listing that has been analysed once is done.
+ */
+export async function saveRiskFlags(
+  db: Database,
+  source: string,
+  externalId: string,
+  flags: unknown[],
+): Promise<void> {
+  await db
+    .update(listings)
+    .set({ riskFlags: flags, riskAnalysedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(listings.source, source), eq(listings.externalId, externalId)));
+}
+
+/** The description and whether it has already been analysed. */
+export async function getListingText(
+  db: Database,
+  source: string,
+  externalId: string,
+): Promise<{ listingId: string; description: string; analysed: boolean } | null> {
+  const rows = await db
+    .select({
+      id: listings.id,
+      description: listings.description,
+      riskAnalysedAt: listings.riskAnalysedAt,
+    })
+    .from(listings)
+    .where(and(eq(listings.source, source), eq(listings.externalId, externalId)))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    listingId: row.id,
+    description: row.description,
+    analysed: row.riskAnalysedAt !== null,
+  };
+}
+
+/** Stored risk flags for a listing, by our own id. Empty until analysed. */
+export async function getRiskFlags(db: Database, listingId: string): Promise<unknown[]> {
+  const rows = await db
+    .select({ riskFlags: listings.riskFlags })
+    .from(listings)
+    .where(eq(listings.id, listingId))
+    .limit(1);
+  const flags = rows[0]?.riskFlags;
+  return Array.isArray(flags) ? flags : [];
+}

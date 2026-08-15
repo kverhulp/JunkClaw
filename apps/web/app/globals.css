@@ -154,6 +154,35 @@
     overscroll-behavior-x: contain;
   }
 
+  /* The road band's cars. Copied from JunkClaw Dashboard.dc.html — the ±80px
+     overshoot is what keeps a car from popping in at the viewport edge. */
+  @keyframes drive-across {
+    from {
+      transform: translateX(-80px);
+    }
+    to {
+      transform: translateX(calc(100vw + 80px));
+    }
+  }
+
+  @keyframes drive-across-reverse {
+    from {
+      transform: translateX(calc(100vw + 80px)) scaleX(-1);
+    }
+    to {
+      transform: translateX(-80px) scaleX(-1);
+    }
+  }
+
+  @keyframes wheel-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(-360deg);
+    }
+  }
+
   .skeleton-pulse {
     animation: skeleton-pulse 1.6s ease-in-out infinite;
   }

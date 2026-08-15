@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/modernist-dc413a56-a71a-4c5d-b70c-c3858ab2acad/styles.css">
+<script src="_ds/modernist-dc413a56-a71a-4c5d-b70c-c3858ab2acad/_ds_bundle.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --color-bg: #FAF5E9;
+    --color-surface: #F2E9D5;
+    --color-neutral-100: #FDFAF2;
+    --color-neutral-200: #F7EFDD;
+    --color-neutral-300: #E6D8BE;
+    --color-neutral-400: #D8C6A5;
+    --color-divider: color-mix(in srgb, #4a3f2f 35%, transparent);
+  }
+  @keyframes drive-across { from { transform: translateX(-80px); } to { transform: translateX(calc(100vw + 80px)); } }
+  @keyframes drive-across-reverse { from { transform: translateX(calc(100vw + 80px)) scaleX(-1); } to { transform: translateX(-80px) scaleX(-1); } }
+  @keyframes wheel-spin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+</style>
+</helmet>
+<div style="background:var(--color-bg);min-height:100vh;color:var(--color-text);font-family:var(--font-body)">
+  <div class="nav">
+    <a href="./JunkClaw Dashboard.dc.html" class="nav-brand" style="text-decoration:none;color:inherit;font-size:22px;display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex:none"><rect width="18" height="18" fill="var(--color-accent)"></rect><circle cx="9" cy="9" r="6" fill="none" stroke="#ffffff" stroke-width="1.4"></circle><line x1="9" y1="9" x2="9.00" y2="3.00" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="14.71" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="12.53" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="5.47" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="3.29" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><circle cx="9" cy="9" r="1.4" fill="#ffffff"></circle></svg>AutoScout</a>
+    <a href="#" aria-current="page">Dashboard</a>
+    <a href="./JunkClaw Badge Overlay.dc.html">Listings</a>
+    <a href="./JunkClaw Profile.dc.html">Profile</a>
+    <a href="./JunkClaw Connect Extension.dc.html">Connect extension</a>
+  </div>
+
+  <div style="max-width:920px;margin:0 auto;padding:40px 24px 80px">
+    <section style="margin-bottom:48px">
+      <h1 style="margin:0 0 32px;font-size:34px;opacity:{{ reveal.h1.opacity }};transform:{{ reveal.h1.transform }};transition:{{ reveal.h1.transition }}">Two hundred listings. Three worth your evening.</h1>
+      <div style="display:grid;grid-template-columns:minmax(0,480px) 1fr;gap:var(--space-8)">
+        <div>
+          <p style="font-size:15px;opacity:{{ reveal.p.opacityFinal }};transform:{{ reveal.p.transform }};transition:{{ reveal.p.transition }};margin:0 0 24px;max-width:52ch;line-height:1.6">AutoScout rides along while you shop for a used car on Facebook Marketplace. It scores every listing against real comparable asking prices, flags the risks, and drafts the message you send the seller — with spending limits enforced in code, not in a prompt.</p>
+          <div style="display:flex;gap:12px;opacity:{{ reveal.cta.opacity }};transform:{{ reveal.cta.transform }};transition:{{ reveal.cta.transition }}">
+            <a href="./JunkClaw Connect Extension.dc.html" class="btn btn-primary"><i data-lucide="plug" style="width:14px;height:14px"></i>Connect the extension</a>
+          </div>
+        </div><div style="opacity: {{ reveal.agentBand.opacity }}; transform: {{ reveal.agentBand.transform }}; transition: {{ reveal.agentBand.transition }}; width: 352px; height: 245px">
+          
+          <div style="min-height:110px;overflow:hidden">
+            <div style="opacity:{{ bandOpacity }};transform:{{ bandTransform }};transition:{{ bandTransition }}">
+              <h6 style="margin-bottom:8px;font-size:18px;color:var(--color-accent-700)">{{ activeRow.label }}</h6>
+              <p style="font-size:16px;opacity:0.65;margin:0;max-width:38ch;line-height:1.5">{{ activeRow.copy }}</p>
+            </div>
+          </div><div style="font-size:11px;opacity:0.5;font-variant-numeric:tabular-nums;margin-top:12px">{{ agentIndexLabel }}</div>
+        </div>
+        
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;border-top:2px solid var(--color-divider);padding-top:24px;margin-top:12px;align-items:start">
+        <sc-for list="{{ features }}" as="f" hint-placeholder-count="3">
+          <div onmousemove="{{ f.onMove }}" onmouseleave="{{ f.onLeave }}" style="position:relative;opacity:{{ f.opacity }};transform:{{ f.transform }};transition:{{ f.transition }};background:{{ f.spotlight }};border-left:{{ f.borderLeft }};padding-left:{{ f.paddingLeft }}">
+            <h6 style="margin-bottom:6px">{{ f.title }}</h6>
+            <p style="font-size:13px;opacity:0.65;margin:0;line-height:1.5">{{ f.copy }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+
+  <div style="position:relative;height:72px;border-top:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider);overflow:hidden;background:var(--color-surface)">
+    <svg width="100%" height="56" viewBox="0 0 400 56" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:56px">
+      <polygon points="0,56 40,20 80,56" fill="var(--color-neutral-300)"></polygon>
+      <polygon points="60,56 110,14 170,56" fill="var(--color-neutral-300)"></polygon>
+      <polygon points="300,56 340,24 380,56" fill="var(--color-neutral-300)"></polygon>
+      <rect x="148" y="42" width="2" height="14" fill="var(--color-neutral-400)"></rect>
+      <polygon points="149,24 143,44 155,44" fill="var(--color-neutral-400)"></polygon>
+      <polygon points="149,32 144,48 154,48" fill="var(--color-neutral-400)"></polygon>
+      <rect x="228" y="42" width="2" height="14" fill="var(--color-neutral-400)"></rect>
+      <polygon points="229,24 223,44 235,44" fill="var(--color-neutral-400)"></polygon>
+      <polygon points="229,32 224,48 234,48" fill="var(--color-neutral-400)"></polygon>
+      <rect x="21" y="46" width="2" height="10" fill="var(--color-neutral-400)"></rect>
+      <polygon points="22,32 17,48 27,48" fill="var(--color-neutral-400)"></polygon>
+      <rect x="361" y="46" width="2" height="10" fill="var(--color-neutral-400)"></rect>
+      <polygon points="362,32 357,48 367,48" fill="var(--color-neutral-400)"></polygon>
+    </svg>
+    <div style="position:absolute;left:0;right:0;top:56px;height:16px;background:var(--color-neutral-300)"></div>
+    <div style="position:absolute;left:0;right:0;top:56px;height:2px;background-image:repeating-linear-gradient(to right, var(--color-neutral-100) 0 26px, transparent 26px 48px)"></div>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true" style="position:absolute;top:56px;left:0;margin-top:-24px;animation:drive-across 11s linear infinite">
+      <rect x="4" y="12" width="56" height="10" fill="var(--color-accent)"></rect>
+      <path d="M14 12 L20 3 H40 L46 12 Z" fill="var(--color-accent)"></path>
+      <path d="M22 12 L26 5 H38 L42 12 Z" fill="var(--color-surface)"></path>
+      <line x1="32" y1="5" x2="32" y2="12" stroke="var(--color-accent)" stroke-width="1.4"></line>
+      <rect x="4" y="17" width="56" height="4" fill="var(--color-text)" opacity="0.15"></rect>
+      <g style="transform-origin:16px 22px;animation:wheel-spin 0.6s linear infinite">
+        <circle cx="16" cy="22" r="5" fill="var(--color-text)"></circle>
+        <line x1="16" y1="22" x2="16" y2="17.6" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="16" y1="22" x2="20.2" y2="19.7" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="16" y1="22" x2="18.6" y2="26.3" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="16" y1="22" x2="13.4" y2="26.3" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="16" y1="22" x2="11.8" y2="19.7" stroke="var(--color-surface)" stroke-width="1"></line>
+        <circle cx="16" cy="22" r="1.5" fill="var(--color-surface)"></circle>
+      </g>
+      <g style="transform-origin:48px 22px;animation:wheel-spin 0.6s linear infinite">
+        <circle cx="48" cy="22" r="5" fill="var(--color-text)"></circle>
+        <line x1="48" y1="22" x2="48" y2="17.6" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="48" y1="22" x2="52.2" y2="19.7" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="48" y1="22" x2="50.6" y2="26.3" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="48" y1="22" x2="45.4" y2="26.3" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="48" y1="22" x2="43.8" y2="19.7" stroke="var(--color-surface)" stroke-width="1"></line>
+        <circle cx="48" cy="22" r="1.5" fill="var(--color-surface)"></circle>
+      </g>
+    </svg>
+    <svg width="64" height="28" viewBox="0 0 64 28" aria-hidden="true" style="position:absolute;top:56px;left:0;margin-top:-16px;animation:drive-across-reverse 17s linear infinite">
+      <rect x="4" y="12" width="56" height="10" fill="var(--color-text)"></rect>
+      <path d="M14 12 L20 3 H40 L46 12 Z" fill="var(--color-text)"></path>
+      <path d="M22 12 L26 5 H38 L42 12 Z" fill="var(--color-surface)"></path>
+      <line x1="32" y1="5" x2="32" y2="12" stroke="var(--color-text)" stroke-width="1.4"></line>
+      <rect x="4" y="17" width="56" height="4" fill="var(--color-text)" opacity="0.15"></rect>
+      <g style="transform-origin:16px 22px;animation:wheel-spin 0.6s linear infinite">
+        <circle cx="16" cy="22" r="5" fill="var(--color-accent)"></circle>
+        <line x1="16" y1="22" x2="16" y2="17.6" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="16" y1="22" x2="20.2" y2="19.7" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="16" y1="22" x2="18.6" y2="26.3" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="16" y1="22" x2="13.4" y2="26.3" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="16" y1="22" x2="11.8" y2="19.7" stroke="var(--color-surface)" stroke-width="1"></line>
+        <circle cx="16" cy="22" r="1.5" fill="var(--color-surface)"></circle>
+      </g>
+      <g style="transform-origin:48px 22px;animation:wheel-spin 0.6s linear infinite">
+        <circle cx="48" cy="22" r="5" fill="var(--color-accent)"></circle>
+        <line x1="48" y1="22" x2="48" y2="17.6" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="48" y1="22" x2="52.2" y2="19.7" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="48" y1="22" x2="50.6" y2="26.3" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="48" y1="22" x2="45.4" y2="26.3" stroke="var(--color-surface)" stroke-width="1"></line>
+        <line x1="48" y1="22" x2="43.8" y2="19.7" stroke="var(--color-surface)" stroke-width="1"></line>
+        <circle cx="48" cy="22" r="1.5" fill="var(--color-surface)"></circle>
+      </g>
+    </svg>
+  </div>
+
+  <footer style="background:var(--color-surface);color:var(--color-text)">
+    <div style="max-width:1200px;margin:0 auto;padding:48px 24px 32px;display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;font-family:var(--font-heading);font-weight:800;font-size:20px;color:var(--color-text);margin-bottom:6px"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex:none"><rect width="18" height="18" fill="var(--color-accent)"></rect><circle cx="9" cy="9" r="6" fill="none" stroke="#ffffff" stroke-width="1.4"></circle><line x1="9" y1="9" x2="9.00" y2="3.00" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="14.71" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="12.53" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="5.47" y2="13.85" stroke="#ffffff" stroke-width="1.3"></line><line x1="9" y1="9" x2="3.29" y2="7.15" stroke="#ffffff" stroke-width="1.3"></line><circle cx="9" cy="9" r="1.4" fill="#ffffff"></circle></svg>AutoScout</div>
+        <div style="font-size:13px;color:var(--color-text);opacity:0.7">Founded 2026</div>
+      </div>
+      <div style="display:flex;gap:64px;flex-wrap:wrap">
+        <div>
+          <h6 style="color:var(--color-text);opacity:0.75;margin-bottom:10px">Quick links</h6>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+            <a href="./JunkClaw Dashboard.dc.html" style="color:var(--color-text);text-decoration:none">Dashboard</a>
+            <a href="./JunkClaw Badge Overlay.dc.html" style="color:var(--color-text);text-decoration:none">Listings</a>
+            <a href="./JunkClaw Profile.dc.html" style="color:var(--color-text);text-decoration:none">Profile</a>
+            <a href="./JunkClaw Connect Extension.dc.html" style="color:var(--color-text);text-decoration:none">Connect extension</a>
+          </div>
+        </div>
+        <div>
+          <h6 style="color:var(--color-text);opacity:0.75;margin-bottom:10px">Legal</h6>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+            <a href="#" style="color:var(--color-text);text-decoration:none">Privacy policy</a>
+            <a href="#" style="color:var(--color-text);text-decoration:none">Terms of service</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:2px solid var(--color-divider);padding:16px 24px;max-width:1200px;margin:0 auto;font-size:12px;color:var(--color-text);opacity:0.55">© 2026 AutoScout. All rights reserved.</div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { revealed: false, spotlights: {}, activeAgent: 0, bandPhase: "visible" };
+  componentDidMount() {
+    window.lucide && window.lucide.createIcons();
+    this.reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (this.reduced) { this.setState({ revealed: true }); return; }
+    // Hero is above the fold, so reveal shortly after mount rather than on scroll.
+    requestAnimationFrame(() => requestAnimationFrame(() => this.setState({ revealed: true })));
+    // Loop through the agent list one at a time in a single band: fade/slide out, swap, fade/slide in.
+    this.loopTimer = setInterval(() => {
+      this.setState({ bandPhase: "hidden" });
+      this.bandTimer = setTimeout(() => {
+        this.setState((s) => ({ activeAgent: (s.activeAgent + 1) % 6, bandPhase: "visible" }));
+      }, 280);
+    }, 2400);
+  }
+  componentWillUnmount() {
+    if (this.loopTimer) clearInterval(this.loopTimer);
+    if (this.bandTimer) clearTimeout(this.bandTimer);
+  }
+  componentDidUpdate() { window.lucide && window.lucide.createIcons(); }
+  reveal(delayMs) {
+    if (this.reduced) return { opacity: 1, opacityFinal: 1, transform: "none", transition: "none" };
+    const on = this.state.revealed;
+    return {
+      opacity: on ? 1 : 0,
+      opacityFinal: on ? 0.7 : 0,
+      transform: on ? "none" : "translateY(12px)",
+      transition: on ? `opacity 0.4s cubic-bezier(0.16,1,0.3,1) ${delayMs}ms, transform 0.4s cubic-bezier(0.16,1,0.3,1) ${delayMs}ms` : "none",
+    };
+  }
+  spotlightBg(i) {
+    const s = this.state.spotlights[i];
+    if (this.reduced || !s) return "transparent";
+    return `radial-gradient(320px circle at ${s.x}px ${s.y}px, rgb(0 0 0 / 0.04), transparent 70%)`;
+  }
+  renderVals() {
+    const agentDefs = [
+      { label: "LISTING EXTRACTOR", copy: "Reads your own Facebook session into one normalised shape." },
+      { label: "COMP CURATOR", copy: "Widens the comparison set one dimension at a time, and says how far it had to go." },
+      { label: "RESEARCH", copy: "Known issues, maintenance intervals, and what the model actually costs to keep." },
+      { label: "RISK ANALYST", copy: "Flags salvage titles, rust, and needs-work — each with the sentence that triggered it." },
+      { label: "NEGOTIATION", copy: "Drafts the message you send. You approve every one, and the ceiling is enforced in code." },
+      { label: "CRITERIA INTERPRETER", copy: "Turns \"Civic under $8k, no rust\" into the filters that drive everything else." },
+    ];
+    const visible = this.reduced ? true : this.state.bandPhase === "visible";
+    const activeRow = agentDefs[this.state.activeAgent];
+    const bandOpacity = visible ? 1 : 0;
+    const bandTransform = visible ? "translateY(0)" : "translateY(-8px)";
+    const bandTransition = this.reduced ? "none" : "opacity 0.28s cubic-bezier(0.16,1,0.3,1), transform 0.28s cubic-bezier(0.16,1,0.3,1)";
+    const agentIndexLabel = `${String(this.state.activeAgent + 1).padStart(2, "0")} / 06`;
+
+    const featureDefs = [
+      { title: "Triage, not listings", copy: "Scored vs. similar asking prices — never sold prices, never a guess." },
+      { title: "Honest when it's thin", copy: "\"Not enough data\" is a real answer. It's never shown as $0." },
+      { title: "You approve every message", copy: "A spending ceiling enforced in code, not left to a prompt." },
+    ];
+    const features = featureDefs.map((d, i) => ({
+      ...d,
+      ...this.reveal(i * 60),
+      borderLeft: i > 0 ? "2px solid var(--color-divider)" : "none",
+      paddingLeft: i > 0 ? "24px" : "0",
+      spotlight: this.spotlightBg(i),
+      onMove: (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        this.setState((s) => ({ spotlights: { ...s.spotlights, [i]: { x: e.clientX - r.left, y: e.clientY - r.top } } }));
+      },
+      onLeave: () => this.setState((s) => { const next = { ...s.spotlights }; delete next[i]; return { spotlights: next }; }),
+    }));
+
+    return {
+      goBack: () => window.history.back(),
+      reveal: { h1: this.reveal(0), p: this.reveal(60), cta: this.reveal(120), agentBand: this.reveal(150) },
+      activeRow,
+      bandOpacity,
+      bandTransform,
+      bandTransition,
+      agentIndexLabel,
+      features,
+    };
+  }
+}
+</script>
+</body>
+</html>

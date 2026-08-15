@@ -17,18 +17,32 @@ export function RoadScene() {
       aria-hidden
       className="relative h-[72px] overflow-hidden border-y-2 border-divider bg-surface"
     >
-      {/* Hills only. preserveAspectRatio="none" so they stretch to any width
-          rather than letterboxing — a wider hill still reads as a hill. */}
-      <svg
-        width="100%"
-        height="56"
-        viewBox="0 0 400 56"
-        preserveAspectRatio="none"
-        className="absolute left-0 top-0 h-14 w-full"
-      >
-        <polygon points="0,56 40,20 80,56" fill="var(--color-neutral-300)" />
-        <polygon points="60,56 110,14 170,56" fill="var(--color-neutral-300)" />
-        <polygon points="300,56 340,24 380,56" fill="var(--color-neutral-300)" />
+      {/*
+       * Hills, as two tiling patterns rather than three stretched triangles.
+       *
+       * No viewBox, so one user unit is one CSS pixel and nothing scales: a
+       * wider window gets more hills instead of wider ones. The two layers have
+       * different tile widths (190 and 280), so their peaks drift out of phase
+       * and the ridge line does not visibly repeat until 1330px — past the
+       * content column. The far layer is lighter, which is the only depth cue a
+       * flat silhouette gets.
+       */}
+      <svg width="100%" height="56" className="absolute left-0 top-0 h-14 w-full">
+        <defs>
+          <pattern id="road-hills-far" width="190" height="56" patternUnits="userSpaceOnUse">
+            <polygon points="0,56 30,34 60,56" fill="var(--color-neutral-200)" />
+            <polygon points="48,56 92,26 136,56" fill="var(--color-neutral-200)" />
+            <polygon points="120,56 158,36 190,56" fill="var(--color-neutral-200)" />
+          </pattern>
+          <pattern id="road-hills-near" width="280" height="56" patternUnits="userSpaceOnUse">
+            <polygon points="10,56 52,22 94,56" fill="var(--color-neutral-300)" />
+            <polygon points="60,56 116,12 172,56" fill="var(--color-neutral-300)" />
+            <polygon points="150,56 190,30 230,56" fill="var(--color-neutral-300)" />
+            <polygon points="212,56 246,28 280,56" fill="var(--color-neutral-300)" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="56" fill="url(#road-hills-far)" />
+        <rect width="100%" height="56" fill="url(#road-hills-near)" />
       </svg>
 
       {/* Trees sit outside that SVG, at fixed pixel size and placed by percent.

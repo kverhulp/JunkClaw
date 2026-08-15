@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JunkClaw</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="head">
+      <div class="mark" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v5M8.5 8h7M9 8c-1.6 2.6-2.4 5.4-2.4 8.6M15 8c1.6 2.6 2.4 5.4 2.4 8.6M12 8v9.5" />
+        </svg>
+      </div>
+      <div class="head-text">
+        <h1>JunkClaw</h1>
+        <p id="connection" class="conn"><i></i> <span>checking…</span></p>
+      </div>
+      <button id="settings" class="iconbtn" type="button" title="Search criteria">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.1" />
+          <path d="M19.9 15a1.6 1.6 0 0 0 .3 1.8 2 2 0 1 1-2.8 2.8 1.6 1.6 0 0 0-2.7 1.1 2 2 0 0 1-4 0 1.6 1.6 0 0 0-2.7-1.1 2 2 0 1 1-2.8-2.8A1.6 1.6 0 0 0 3.1 15a2 2 0 0 1 0-4 1.6 1.6 0 0 0 1.1-2.7 2 2 0 1 1 2.8-2.8A1.6 1.6 0 0 0 9.7 4.4a2 2 0 0 1 4 0 1.6 1.6 0 0 0 2.7 1.1 2 2 0 1 1 2.8 2.8A1.6 1.6 0 0 0 20.9 11a2 2 0 0 1 0 4z" />
+        </svg>
+      </button>
+    </header>
+
+    <dl class="session">
+      <div><dt>seen</dt><dd id="stat-seen">—</dd></div>
+      <div><dt>queued</dt><dd id="stat-queued">—</dd></div>
+      <div><dt>errors</dt><dd id="stat-errors">—</dd></div>
+    </dl>
+
+    <p id="error" class="error" hidden></p>
+
+    <div class="toolbar" role="group" aria-label="Filter listings">
+      <button class="chip" type="button" data-filter="fit" aria-pressed="true">
+        Fits criteria <span class="n" id="count-fit">0</span>
+      </button>
+      <button class="chip" type="button" data-filter="all" aria-pressed="false">
+        All <span class="n" id="count-all">0</span>
+      </button>
+    </div>
+
+    <main id="list" class="list"></main>
+
+    <p class="foot">
+      JunkClaw only reads pages you open yourself. It never browses Marketplace
+      in the background.
+    </p>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

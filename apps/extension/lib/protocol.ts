@@ -1,4 +1,5 @@
 import type { Analysis, ListingFacts } from "@junkclaw/schema";
+import type { DealRecord } from "./deals";
 
 /**
  * The two hops a listing makes before it leaves the browser:
@@ -41,7 +42,8 @@ export function isPagePayloadMessage(value: unknown): value is PagePayloadMessag
 export type RuntimeMessage =
   | { kind: "listings-observed"; listings: ListingFacts[] }
   | { kind: "parse-failure"; stage: string; message: string; payload: unknown }
-  | { kind: "get-status" };
+  | { kind: "get-status" }
+  | { kind: "get-deals" };
 
 /**
  * background -> isolated world.
@@ -63,4 +65,28 @@ export interface StatusResponse {
   lastIngestAt: string | null;
   /** Why the last ingest failed, if it did. Null once one succeeds. */
   lastError: string | null;
+}
+
+/**
+ * background -> side panel.
+ *
+ * The panel is a separate extension page, so it cannot read the content
+ * script's state or the worker's variables directly — everything it renders
+ * comes through here. Status rides along because the panel shows both, and one
+ * round trip can't disagree with itself the way two can.
+ */
+export interface DealsResponse {
+  deals: DealRecord[];
+  status: StatusResponse;
+}
+
+/**
+ * Sent when the tracked set changes, so the panel refetches instead of polling.
+ *
+ * Deliberately carries no payload: a notification can be dropped when the panel
+ * is closed without anything going stale, and the panel asks for the whole set
+ * on open regardless.
+ */
+export interface DealsUpdatedMessage {
+  kind: "deals-updated";
 }

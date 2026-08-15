@@ -1,5 +1,12 @@
 import type { ListingFacts } from "@junkclaw/schema";
-import type { RuntimeMessage, ScoresMessage, StatusResponse } from "@/lib/protocol";
+import type {
+  DealsResponse,
+  DealsUpdatedMessage,
+  RuntimeMessage,
+  ScoresMessage,
+  StatusResponse,
+} from "@/lib/protocol";
+import { SessionDeals } from "@/lib/deals";
 import { IngestQueue } from "@/lib/queue";
 import { postIngest, postScore } from "@/lib/api";
 import { apiBaseUrl, apiToken, enabled } from "@/lib/settings";
@@ -29,6 +36,15 @@ const stats: SessionStats = {
   parseFailuresThisSession: 0,
   lastIngestAt: null,
 };
+
+/**
+ * What the side panel renders from.
+ *
+ * The worker is the only place that sees both halves — listings from the content
+ * script, analyses from /api/score — so it is the only place they can be kept
+ * together. Session-scoped and in-memory on purpose; see lib/deals.ts.
+ */
+const deals = new SessionDeals();
 
 const queue = new IngestQueue({
   schedule: (fn, ms) => setTimeout(fn, ms),
@@ -78,10 +94,38 @@ async function scoreAndBroadcast(
       })
       .filter((a): a is ScoresMessage["analyses"][number] => a !== null);
 
-    if (analyses.length > 0) await broadcast({ kind: "scores", analyses });
+    if (analyses.length > 0) {
+      deals.score(analyses);
+      notifyPanel();
+      await broadcast({ kind: "scores", analyses });
+    }
   } catch {
     // Badges stay at "…" and refresh on the next burst. Not worth surfacing.
   }
+}
+
+/**
+ * Tells the side panel its data changed.
+ *
+ * Fire-and-forget: with no panel open there is no receiver and sendMessage
+ * rejects, which is the normal case rather than an error worth surfacing.
+ */
+function notifyPanel(): void {
+  const message: DealsUpdatedMessage = { kind: "deals-updated" };
+  void browser.runtime.sendMessage(message).catch(() => {
+    // No panel open. Nothing to update.
+  });
+}
+
+function currentStatus(enabled: boolean): StatusResponse {
+  return {
+    enabled,
+    seenThisSession: stats.seenThisSession,
+    queuedForIngest: queue.size,
+    parseFailuresThisSession: stats.parseFailuresThisSession,
+    lastIngestAt: stats.lastIngestAt,
+    lastError: queue.lastError,
+  };
 }
 
 async function broadcast(message: ScoresMessage): Promise<void> {
@@ -98,12 +142,24 @@ async function broadcast(message: ScoresMessage): Promise<void> {
 }
 
 export default defineBackground(() => {
+  // Clicking the toolbar icon opens the panel. There is no popup: the panel is
+  // the extension's UI, and an action can have one or the other, not both.
+  void browser.sidePanel
+    ?.setPanelBehavior({ openPanelOnActionClick: true })
+    .catch(() => {
+      // Chrome < 114. The panel is still reachable from the browser's own menu.
+    });
+
   browser.runtime.onMessage.addListener((message: RuntimeMessage, _sender, sendResponse) => {
     switch (message.kind) {
       case "listings-observed":
         void (async () => {
           if (!(await enabled.getValue())) return;
           stats.seenThisSession += message.listings.length;
+          // Recorded before the queue: the panel should show a car the moment
+          // it is parsed, not once a round trip to our server succeeds.
+          deals.observe(message.listings);
+          notifyPanel();
           queue.add(message.listings);
         })();
         return false;
@@ -116,17 +172,20 @@ export default defineBackground(() => {
 
       case "get-status": {
         void (async () => {
-          const response: StatusResponse = {
-            enabled: await enabled.getValue(),
-            seenThisSession: stats.seenThisSession,
-            queuedForIngest: queue.size,
-            parseFailuresThisSession: stats.parseFailuresThisSession,
-            lastIngestAt: stats.lastIngestAt,
-            lastError: queue.lastError,
+          sendResponse(currentStatus(await enabled.getValue()));
+        })();
+        return true; // keeps the message channel open for the async response
+      }
+
+      case "get-deals": {
+        void (async () => {
+          const response: DealsResponse = {
+            deals: deals.all(),
+            status: currentStatus(await enabled.getValue()),
           };
           sendResponse(response);
         })();
-        return true; // keeps the message channel open for the async response
+        return true;
       }
     }
   });

@@ -131,3 +131,66 @@ describe("SessionDeals", () => {
     expect(deals.size).toBe(2);
   });
 });
+
+/**
+ * Surviving a service worker restart.
+ *
+ * MV3 terminates an idle worker after roughly thirty seconds, and this store was
+ * a plain Map inside it. Scroll, pause to read a listing, come back — panel
+ * blank, `seen` at zero, and reloading the Marketplace page the only cure,
+ * because that made the content script re-send everything.
+ */
+describe("restore", () => {
+  const facts = (externalId: string, priceCents = 8_900_00): ListingFacts => ({
+    source: "marketplace", externalId, urlHash: externalId.padStart(64, "0"),
+    rawTitle: "2013 Toyota RAV4 LE", rawSubtitle: "187K km", priceCents,
+    previousPriceCents: null, currency: "CAD",
+    location: { city: "Cornwall", region: "PE", country: "CA" },
+    isDealer: false, description: "", photoUrls: [],
+    firstSeenAt: "2026-08-01T00:00:00.000Z", lastSeenAt: "2026-08-14T00:00:00.000Z",
+    rawPayload: {},
+  });
+
+  it("brings the listings back", () => {
+    const before = new SessionDeals();
+    before.observe([facts("1"), facts("2")]);
+
+    // The round trip through storage.session: structured clone, not a reference.
+    const after = SessionDeals.restore(JSON.parse(JSON.stringify(before.all())));
+    expect(after.all().map((r) => r.facts.externalId)).toEqual(["1", "2"]);
+  });
+
+  it("brings analyses back with them", () => {
+    const before = new SessionDeals();
+    before.observe([facts("1")]);
+    before.score([analysis("1")]);
+
+    const after = SessionDeals.restore(JSON.parse(JSON.stringify(before.all())));
+    expect(after.all()[0]?.analysis).not.toBeNull();
+  });
+
+  /*
+   * Order is the eviction policy. A car still on screen must not be first out
+   * just because the worker was recycled underneath it.
+   */
+  it("keeps least-recently-seen order", () => {
+    const before = new SessionDeals();
+    before.observe([facts("old"), facts("new")]);
+    before.observe([facts("old")]); // re-seen, so it moves to the end
+
+    const after = SessionDeals.restore(before.all());
+    expect(after.all().map((r) => r.facts.externalId)).toEqual(["new", "old"]);
+  });
+
+  it("still honours the cap when restoring an oversized payload", () => {
+    const records = Array.from({ length: MAX_TRACKED + 25 }, (_, i) => ({
+      facts: facts(String(i)),
+      analysis: null,
+    }));
+    expect(SessionDeals.restore(records).size).toBe(MAX_TRACKED);
+  });
+
+  it("returns an empty store for an empty restore", () => {
+    expect(SessionDeals.restore([]).size).toBe(0);
+  });
+});

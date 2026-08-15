@@ -79,4 +79,26 @@ export class SessionDeals {
   all(): DealRecord[] {
     return [...this.records.values()];
   }
+
+  /**
+   * Rebuilds the store from what `all()` produced.
+   *
+   * Needed because this lives in an MV3 service worker, and Chrome terminates
+   * those after about thirty seconds of inactivity. Every listing collected went
+   * with it: the panel emptied, `seenThisSession` fell back to zero, and the
+   * only way to get them back was to reload the Marketplace page so the content
+   * script re-sent everything. That is the whole of "sometimes the vehicles do
+   * not load".
+   *
+   * Insertion order is preserved, so least-recently-seen eviction survives a
+   * restart too — a car still on screen should not be first out just because the
+   * worker was recycled.
+   */
+  static restore(records: readonly DealRecord[]): SessionDeals {
+    const deals = new SessionDeals();
+    for (const record of records.slice(-MAX_TRACKED)) {
+      deals.records.set(record.facts.externalId, record);
+    }
+    return deals;
+  }
 }

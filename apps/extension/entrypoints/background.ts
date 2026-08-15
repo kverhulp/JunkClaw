@@ -5,7 +5,7 @@ import type {
   RuntimeMessage,
   StatusResponse,
 } from "@/lib/protocol";
-import { SessionDeals } from "@/lib/deals";
+import { SessionDeals, type DealRecord } from "@/lib/deals";
 import { IngestQueue } from "@/lib/queue";
 import { postEnrich, postIngest, postScore } from "@/lib/api";
 import { apiBaseUrl, apiToken, enabled } from "@/lib/settings";
@@ -43,7 +43,49 @@ const stats: SessionStats = {
  * script, analyses from /api/score — so it is the only place they can be kept
  * together. Session-scoped and in-memory on purpose; see lib/deals.ts.
  */
-const deals = new SessionDeals();
+let deals = new SessionDeals();
+
+/**
+ * Session state, kept somewhere Chrome will not throw away.
+ *
+ * `storage.session` rather than `local`: it lives in memory, is cleared when the
+ * browser closes, and — the point — survives a service worker restart. That
+ * keeps the deliberate session-scoped semantics (no "all my listings" route, no
+ * feed, nothing written to disk) while fixing the reason the panel kept emptying.
+ *
+ * MV3 terminates an idle worker after about thirty seconds. Everything below was
+ * a plain object and a plain Map, so a user who scrolled, paused to read a
+ * listing, and came back found the panel blank and `seen` at zero — with a page
+ * reload the only cure, because that made the content script re-send.
+ */
+const SESSION_DEALS_KEY = "session:deals";
+const SESSION_STATS_KEY = "session:stats";
+
+const hydrated = (async () => {
+  try {
+    const stored = await browser.storage.session.get([SESSION_DEALS_KEY, SESSION_STATS_KEY]);
+
+    const records = stored[SESSION_DEALS_KEY];
+    if (Array.isArray(records)) deals = SessionDeals.restore(records as DealRecord[]);
+
+    const saved = stored[SESSION_STATS_KEY] as Partial<SessionStats> | undefined;
+    if (saved && typeof saved === "object") Object.assign(stats, saved);
+  } catch {
+    // No session storage, or a cold profile. An empty panel is the truth then,
+    // and it refills from the next sighting rather than staying wrong.
+  }
+})();
+
+/**
+ * Fire-and-forget: a failed write costs this session's continuity, not its
+ * correctness, and blocking a scroll burst on a storage round trip would be a
+ * worse trade than losing the odd restart.
+ */
+function persist(): void {
+  void browser.storage.session
+    .set({ [SESSION_DEALS_KEY]: deals.all(), [SESSION_STATS_KEY]: stats })
+    .catch(() => {});
+}
 
 const queue = new IngestQueue({
   schedule: (fn, ms) => setTimeout(fn, ms),
@@ -56,7 +98,9 @@ const queue = new IngestQueue({
       if (!token) throw new Error("Extension is not connected — no API token set");
 
       const ingested = await postIngest({ baseUrl, token }, { listings: batch });
+      await hydrated;
       stats.lastIngestAt = new Date().toISOString();
+      persist();
 
       // Scoring is a separate round trip on purpose: ingest must succeed (and the
       // corpus must grow) even when scoring is unavailable. A failure here is
@@ -105,7 +149,9 @@ async function scoreAndFile(
     if (analyses.length > 0) {
       // Straight into the session store the panel reads. Nothing is pushed
       // into the Marketplace tab any more — there is no badge to update.
+      await hydrated;
       deals.score(analyses);
+      persist();
       notifyPanel();
     }
   } catch {
@@ -151,10 +197,12 @@ export default defineBackground(() => {
       case "listings-observed":
         void (async () => {
           if (!(await enabled.getValue())) return;
+          await hydrated;
           stats.seenThisSession += message.listings.length;
           // Recorded before the queue: the panel should show a car the moment
           // it is parsed, not once a round trip to our server succeeds.
           deals.observe(message.listings);
+          persist();
           notifyPanel();
           queue.add(message.listings);
         })();
@@ -175,13 +223,18 @@ export default defineBackground(() => {
         return false;
 
       case "parse-failure":
-        stats.parseFailuresThisSession += 1;
+        void (async () => {
+          await hydrated;
+          stats.parseFailuresThisSession += 1;
+          persist();
+        })();
         // TODO(M1): forward to /api/telemetry so parse-sentinel has payloads to
         // diff. Rate, not individual failures, is what should page anyone.
         return false;
 
       case "get-status": {
         void (async () => {
+          await hydrated;
           sendResponse(currentStatus(await enabled.getValue()));
         })();
         return true; // keeps the message channel open for the async response
@@ -189,6 +242,7 @@ export default defineBackground(() => {
 
       case "get-deals": {
         void (async () => {
+          await hydrated;
           const response: DealsResponse = {
             deals: deals.all(),
             status: currentStatus(await enabled.getValue()),

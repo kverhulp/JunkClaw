@@ -7,8 +7,11 @@ import type { ReactNode } from "react";
 import { cx } from "../ui/primitives";
 import { SiteHeader } from "./site-chrome";
 
+// Same order and the same labels as the header nav. Two navigations that
+// disagree about what a destination is called is a small thing that makes an
+// app feel unfinished.
 const SIDEBAR = [
-  { href: "/dashboard", label: "Overview" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/catalogue", label: "Catalogue" },
   { href: "/settings", label: "Settings" },
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Reveal, SpotlightCard } from "../ui/motion";
 
@@ -107,18 +107,43 @@ function AgentRotator() {
   const [visible, setVisible] = useState(true);
   const [paused, setPaused] = useState(false);
 
+  const hasAdvanced = useRef(false);
+
   useEffect(() => {
     if (paused) return;
 
-    const loop = window.setInterval(() => {
-      setVisible(false);
-      window.setTimeout(() => {
-        setIndex((current) => (current + 1) % AGENTS.length);
-        setVisible(true);
-      }, 280);
-    }, 4200);
+    let holdTimer: number;
+    let fadeTimer: number;
 
-    return () => window.clearInterval(loop);
+    /**
+     * A self-rescheduling chain rather than an interval, so `index` stays out of
+     * the dependency array. Depending on it re-created the timer on every
+     * change, and the 280ms fade timeout was never cleaned up — between them the
+     * rotation advanced twice and then stalled.
+     *
+     * The first row is held for 2s instead of 4.2s. At a flat interval the band
+     * sits on row one long enough that the page reads as broken rather than as
+     * paced; moving early proves it is alive, then it settles into a rhythm
+     * someone can actually read at.
+     */
+    const schedule = (delay: number) => {
+      holdTimer = window.setTimeout(() => {
+        setVisible(false);
+        fadeTimer = window.setTimeout(() => {
+          setIndex((current) => (current + 1) % AGENTS.length);
+          setVisible(true);
+          hasAdvanced.current = true;
+          schedule(4200);
+        }, 280);
+      }, delay);
+    };
+
+    schedule(hasAdvanced.current ? 4200 : 2000);
+
+    return () => {
+      window.clearTimeout(holdTimer);
+      window.clearTimeout(fadeTimer);
+    };
   }, [paused]);
 
   const agent = AGENTS[index]!;
@@ -130,8 +155,14 @@ function AgentRotator() {
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
       tabIndex={0}
-      aria-label="Agent capabilities, rotating. Focus to pause."
-      className="max-w-[352px]"
+      aria-label="Agent capabilities, rotating. Hover or focus to pause."
+      /**
+       * Sized to the text, not to the column. Pausing on hover is right for
+       * readability, but a pause target the width of the whole hero means a
+       * cursor resting anywhere nearby stops the rotation — which looks
+       * identical to being broken.
+       */
+      className="inline-block max-w-[352px]"
     >
       <div className="min-h-[110px] overflow-hidden">
         <div

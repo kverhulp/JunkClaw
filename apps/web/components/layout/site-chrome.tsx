@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 import { motion } from "motion/react";
 
@@ -11,8 +11,8 @@ import { BrandMark } from "./brand";
 import { LegalDialogs, type LegalDoc } from "../legal/legal-dialogs";
 
 const NAV = [
-  { href: "/catalogue", label: "Catalogue" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/catalogue", label: "Catalogue" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -21,21 +21,7 @@ const SIGNED_IN = false;
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [query, setQuery] = useState("");
-
-  /**
-   * Search lives in the header on every page, and it goes somewhere: submitting
-   * navigates to the catalogue with the term applied, which is the only place
-   * results can actually be shown. A search box that does nothing on the pages
-   * where it appears is worse than no search box.
-   */
-  function onSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const term = query.trim();
-    router.push(term ? `/catalogue?q=${encodeURIComponent(term)}` : "/catalogue");
-  }
 
   return (
     <header className="sticky top-0 z-40 border-b-2 border-divider bg-bg/95 backdrop-blur">
@@ -48,24 +34,10 @@ export function SiteHeader() {
           AutoScout
         </Link>
 
-        <form role="search" className="hidden min-w-0 flex-1 md:block" onSubmit={onSearch}>
-          <label htmlFor="global-search" className="sr-only">
-            Search listings
-          </label>
-          <input
-            id="global-search"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search make, model, or year…"
-            className={cx(
-              "min-h-9 w-full max-w-md border border-divider bg-surface px-2.5 py-1.5",
-              "text-[14px] caret-accent placeholder:text-text-muted",
-              "transition-[border-color] duration-150 ease-out",
-              "hover:border-text/45",
-            )}
-          />
-        </form>
+        {/* No search here. The catalogue's own filter sidebar is the search, and
+            a second box in the header would be a duplicate control that has to
+            stay in sync with it. */}
+        <div className="flex-1" />
 
         <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
           {NAV.map((item) => {

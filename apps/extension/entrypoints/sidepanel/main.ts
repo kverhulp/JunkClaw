@@ -11,6 +11,7 @@ import type { DealRecord } from "@/lib/deals";
 import { compPosition } from "@junkclaw/core";
 import { buildShortlist, type ShortlistEntry } from "@/lib/shortlist";
 import { compSummary, confidenceLabel, dealHeadline, describeFailure } from "@/lib/copy";
+import { sortShortlist, type SortKey } from "@/lib/sort";
 import { apiToken, criteria, readCriteria } from "@/lib/settings";
 
 /**
@@ -34,6 +35,7 @@ const connection = document.querySelector<HTMLElement>("#connection")!;
 const chips = [...document.querySelectorAll<HTMLButtonElement>(".chip")];
 
 let filter: Filter = "fit";
+let sort: SortKey = "gap";
 let entries: ShortlistEntry[] = [];
 let analyses = new Map<string, DealRecord["analysis"]>();
 /** Which rows the user opened. Survives a re-render, which happens on every
@@ -42,6 +44,12 @@ const expanded = new Set<string>();
 
 document.querySelector<HTMLButtonElement>("#settings")!.addEventListener("click", () => {
   void browser.runtime.openOptionsPage();
+});
+
+const sortSelect = document.querySelector<HTMLSelectElement>("#sort")!;
+sortSelect.addEventListener("change", () => {
+  sort = sortSelect.value as SortKey;
+  render();
 });
 
 for (const chip of chips) {
@@ -117,7 +125,8 @@ function onShortlist(entry: ShortlistEntry): boolean {
 }
 
 function render(): void {
-  const shown = filter === "all" ? entries : entries.filter(onShortlist);
+  const matching = filter === "all" ? entries : entries.filter(onShortlist);
+  const shown = sortShortlist(matching, analyses, sort);
 
   text("#count-fit", String(entries.filter(onShortlist).length));
   text("#count-all", String(entries.length));

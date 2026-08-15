@@ -232,11 +232,18 @@ document.querySelector<HTMLButtonElement>("#sheet-save")!.addEventListener("clic
       muteNonQualifying: false,
     };
 
-    await Promise.all([
-      criteria.setValue(toCriteria(values)),
-      apiBaseUrl.setValue(input("apiBaseUrl").value.trim()),
-      apiToken.setValue(input("apiToken").value.trim()),
-    ]);
+    try {
+      await Promise.all([
+        criteria.setValue(toCriteria(values)),
+        apiBaseUrl.setValue(input("apiBaseUrl").value.trim()),
+        apiToken.setValue(input("apiToken").value.trim()),
+      ]);
+    } catch (error) {
+      // Saving is the one action where silence is worst: the user believes the
+      // setting took, and every judgement afterwards is made against the old one.
+      reportFailure("saving criteria", error);
+      return;
+    }
 
     savedFlag.hidden = false;
     // The stored-criteria watcher re-judges the list; this only re-reads the
@@ -267,7 +274,7 @@ browser.runtime.onMessage.addListener((message: { kind?: string }) => {
   if (message.kind === "deals-updated") void refresh();
 });
 
-// Saving criteria in the options page has to re-judge what's already on screen.
+// Saving criteria has to re-judge what's already on screen.
 // Otherwise widening a budget appears to do nothing until the next car scrolls
 // past, and the obvious conclusion is that the setting didn't save.
 criteria.watch(() => void refresh());
@@ -291,10 +298,16 @@ async function refresh(): Promise<void> {
     return;
   }
 
-  entries = buildShortlist(
-    response.deals.map((d) => d.facts),
-    criteria,
-  );
+  try {
+    entries = buildShortlist(
+      response.deals.map((d) => d.facts),
+      criteria,
+    );
+  } catch (error) {
+    // One unparseable listing must not cost the whole shortlist.
+    reportFailure("shortlist", error);
+    entries = [];
+  }
   analyses = new Map(response.deals.map((d) => [d.facts.externalId, d.analysis]));
 
   text("#stat-seen", String(response.status.seenThisSession));
@@ -334,7 +347,35 @@ function cars(): ShortlistEntry[] {
   return entries.filter((entry) => entry.kind !== "other" && entry.kind !== "unpriced");
 }
 
+/**
+ * Says what went wrong, in the panel, instead of dying quietly.
+ *
+ * Everything the panel draws happens inside `render()`, and an exception
+ * anywhere in it — one unexpected shape, one field a newer server added —
+ * aborted the whole pass and left an empty panel with no message. From the
+ * outside that is indistinguishable from "no cars matched", which is how a
+ * broken panel gets described as "the parameters broke the extension": the
+ * failure and the empty state look the same.
+ *
+ * The panel is a diagnostic surface as much as a shopping one. It should be able
+ * to tell you it is broken.
+ */
+function reportFailure(where: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  errorLine.textContent = `Panel error in ${where} — ${message}`;
+  errorLine.hidden = false;
+  console.error(`[AutoScout] ${where} failed`, error);
+}
+
 function render(): void {
+  try {
+    renderList();
+  } catch (error) {
+    reportFailure("render", error);
+  }
+}
+
+function renderList(): void {
   // Every card is about to be replaced, so the intervals driving their elapsed
   // counters are about to be orphaned. Clear them before they are.
   for (const ticker of tickers) clearInterval(ticker);

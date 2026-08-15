@@ -29,7 +29,7 @@ export default defineConfig({
     // The deployed API origin gets added here at deploy time. If the base URL
     // ever becomes genuinely user-chosen, this turns into
     // `optional_host_permissions` plus a `permissions.request()` behind the
-    // Save button on the options page.
+    // Save button in the panel's criteria sheet.
     host_permissions: ["https://www.facebook.com/*", "http://localhost:3000/*"],
   },
 });

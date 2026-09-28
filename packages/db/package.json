@@ -19,14 +19,14 @@
   "dependencies": {
     "@junkclaw/core": "workspace:*",
     "@junkclaw/schema": "workspace:*",
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "^0.45.3",
     "postgres": "^3.4.5"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
     "@electric-sql/pglite-socket": "^0.2.11",
-    "@types/node": "^22.20.2",
-    "drizzle-kit": "^0.31.10",
-    "tsx": "^4.23.13"
+    "@types/node": "^22.20.4",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15"
   }
 }
